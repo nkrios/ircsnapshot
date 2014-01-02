@@ -26,7 +26,7 @@ def PrintHelp():
 
 
 def id_generator(size=6,
-    chars=string.ascii_uppercase + string.ascii_lowercase + string.digits):
+    chars=string.ascii_uppercase + string.ascii_lowercase):
     return ''.join(choice(chars) for x in range(size))
 
 
