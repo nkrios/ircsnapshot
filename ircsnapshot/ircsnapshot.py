@@ -14,14 +14,15 @@ version = "0.1"
 
 def PrintHelp():
     global version
-    print("usage: ircsnapshot.py [-h] [-x] server[:port]")
+    print("usage: ircsnapshot.py [-h] [-x] [-p PASS] server[:port]")
     print("")
     print(("IRCSnapshot v" + version))
     print("Gathering information from IRC servers")
     print("By Brian Wallace (@botnet_hunter)")
     print("")
-    print("  -x, --ssl     SSL connection")
-    print("  -h, --help    Print this message")
+    print("  -x, --ssl                 SSL connection")
+    print("  -h, --help                Print this message")
+    print("  -p PASS, --password PASS  Server password")
     print("")
 
 
@@ -180,6 +181,8 @@ class IRCBot:
 parser = ArgumentParser(add_help=False)
 parser.add_argument('server', metavar='server', type=str, nargs='?',
     default=None)
+parser.add_argument('-p', '--password', metavar='password', type=str, nargs='?',
+    default=None)
 parser.add_argument('-x', '--ssl', default=False, required=False,
     action='store_true')
 parser.add_argument('-h', '--help', default=False, required=False,
@@ -190,8 +193,9 @@ if args.help or args.server is None:
     PrintHelp()
     exit()
 
-server = args.server[0]
+server = args.server
 port = "6667"
+password = args.password
 
 if server.find(":") != -1:
     port = server[server.find(":") + 1:]
@@ -200,7 +204,7 @@ if server.find(":") != -1:
 config = {
     'server': server,
     'port': port,
-    'pass': None,
+    'pass': password,
     'ssl': args.ssl
 }
 
