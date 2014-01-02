@@ -22,6 +22,7 @@ def PrintHelp():
     print("")
     print("  -x, --ssl     SSL connection")
     print("  -h, --help    Print this message")
+    print("")
 
 
 def id_generator(size=6,
@@ -176,15 +177,16 @@ class IRCBot:
                             break
 
 
-parser = ArgumentParser(description='IRC snapshotting tool', add_help=False)
-parser.add_argument('server', metavar='server', type=str, nargs=1)
+parser = ArgumentParser(add_help=False)
+parser.add_argument('server', metavar='server', type=str, nargs='?',
+    default=None)
 parser.add_argument('-x', '--ssl', default=False, required=False,
     action='store_true')
 parser.add_argument('-h', '--help', default=False, required=False,
     action='store_true')
 args = parser.parse_args()
 
-if args.help:
+if args.help or args.server is None:
     PrintHelp()
     exit()
 
