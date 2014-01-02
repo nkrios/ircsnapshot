@@ -3,7 +3,7 @@ ircsnapshot
 
 Tool to gather information from IRC servers
 
-$ python ircsnapshot.py -h
+<pre>$ python ircsnapshot.py -h
 usage: ircsnapshot.py [-h] [-x] [-p PASS] server[:port]
 
 IRCSnapshot v0.1
@@ -14,5 +14,5 @@ By Brian Wallace (@botnet_hunter)
   -h, --help                Print this message
   -p PASS, --password PASS  Server password
 
-
+</pre>
 Please report any issues you encounter.  This tool has proven to be useful in a few cases so I decided it would be good to publish.
