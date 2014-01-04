@@ -196,7 +196,7 @@ parser.add_argument('server', metavar='server', type=str, nargs='?',
     default=None)
 parser.add_argument('-p', '--password', metavar='password', type=str, nargs='?',
     default=None)
-parser.add_argument('-c', '--channels', metavar='channels', type=str, nargs='*',
+parser.add_argument('-c', '--channels', metavar='channels', type=str, nargs='?',
     default=None)
 parser.add_argument('-x', '--ssl', default=False, required=False,
     action='store_true')
