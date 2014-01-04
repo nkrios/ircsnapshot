@@ -14,15 +14,16 @@ version = "0.1"
 
 def PrintHelp():
     global version
-    print("usage: ircsnapshot.py [-h] [-x] [-p PASS] server[:port]")
+    print("usage: ircsnapshot.py [-h] [-x] [-p PASS] [-c #chan1] server[:port]")
     print("")
     print(("IRCSnapshot v" + version))
     print("Gathering information from IRC servers")
     print("By Brian Wallace (@botnet_hunter)")
     print("")
-    print("  -x, --ssl                 SSL connection")
-    print("  -h, --help                Print this message")
-    print("  -p PASS, --password PASS  Server password")
+    print("  -x, --ssl                     SSL connection")
+    print("  -h, --help                    Print this message")
+    print("  -p --password PASS            Server password")
+    print("  -c --channels #chan1,#chan2   Additional channels to check")
     print("")
 
 
@@ -127,6 +128,18 @@ class IRCBot:
                         if chanDesc['name'] != "*":
                             self.channelsToScan.append(chanDesc)
                     if cmd[1] == "323":
+                        # Add all mandatory join channels
+                        for chan in self.config['channelstocheck']:
+                            exists = False
+                            for c in self.channelsToScan:
+                                if c['name'] == chan:
+                                    exists = True
+                                    break
+                            if not exists:
+                                self.channelsToScan.append({"name":
+                                    unicode(chan, errors='ignore'),
+                                    "usercount": '?', "topic":
+                                    unicode("undefined", errors='ignore')})
                         if len(self.channelsToScan) > 0:
                             self.join(self.channelsToScan[0]["name"])
                             del self.channelsToScan[0]
@@ -183,6 +196,8 @@ parser.add_argument('server', metavar='server', type=str, nargs='?',
     default=None)
 parser.add_argument('-p', '--password', metavar='password', type=str, nargs='?',
     default=None)
+parser.add_argument('-c', '--channels', metavar='channels', type=str, nargs='*',
+    default=None)
 parser.add_argument('-x', '--ssl', default=False, required=False,
     action='store_true')
 parser.add_argument('-h', '--help', default=False, required=False,
@@ -196,6 +211,9 @@ if args.help or args.server is None:
 server = args.server
 port = "6667"
 password = args.password
+channels = None
+if args.channels is not None:
+    channels = args.channels.split(',')
 
 if server.find(":") != -1:
     port = server[server.find(":") + 1:]
@@ -205,7 +223,8 @@ config = {
     'server': server,
     'port': port,
     'pass': password,
-    'ssl': args.ssl
+    'ssl': args.ssl,
+    'channelstocheck': channels
 }
 
 bot = IRCBot(config)
