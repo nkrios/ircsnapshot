@@ -109,6 +109,12 @@ class IRCBot:
                 self.log(line)
                 if line[:6] == "PING :":
                     self.send("PONG :" + line[6:])
+                    if len(self.channelsToScan) > 0:
+                        self.join(self.channelsToScan[0]["name"])
+                        del self.channelsToScan[0]
+                    if len(self.usersToScan) > 0:
+                        self.whois(self.usersToScan[0])
+                        del self.usersToScan[0]
                 cmd = string.split(line, " ")
                 if len(cmd) > 1:
                     if cmd[1] == "433":
@@ -160,7 +166,7 @@ class IRCBot:
                                         self.usersToScan.append(nick)
                         if self.usersToScan.count == 0:
                             self.usersToScan.append(self.nick)
-                    if cmd[1] == "366" or cmd[1] == "475" or cmd[1] == "477" or cmd[1] == "470" or cmd[1] == "474" or cmd[1] == "520":
+                    if cmd[1] == "366" or cmd[1] == "475" or cmd[1] == "473" or cmd[1] == "477" or cmd[1] == "470" or cmd[1] == "474" or cmd[1] == "520":
                         self.part(cmd[3])
 
                         # join next
