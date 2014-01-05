@@ -160,7 +160,7 @@ class IRCBot:
                                         self.usersToScan.append(nick)
                         if self.usersToScan.count == 0:
                             self.usersToScan.append(self.nick)
-                    if cmd[1] == "366" or cmd[1] == "475" or cmd[1] == "477" or cmd[1] == "520":
+                    if cmd[1] == "366" or cmd[1] == "475" or cmd[1] == "477" or cmd[1] == "470" or cmd[1] == "474" or cmd[1] == "520":
                         self.part(cmd[3])
 
                         # join next
