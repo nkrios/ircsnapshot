@@ -236,7 +236,11 @@ config = {
 }
 
 bot = IRCBot(config)
-bot.start()
+try:
+    bot.start()
+except:
+    print("An error occurred while connected to the IRC server")
+    print("Still going to write out the results")
 
 with open(config['server'] + ".channels.json", "a") as myfile:
     myfile.write(dumps(bot.channels, sort_keys=True, indent=4,
