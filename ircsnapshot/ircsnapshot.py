@@ -129,18 +129,19 @@ class IRCBot:
                         if chanDesc['name'] != "*":
                             self.channelsToScan.append(chanDesc)
                     if cmd[1] == "323":
-                        # Add all mandatory join channels
-                        for chan in self.config['channelstocheck']:
-                            exists = False
-                            for c in self.channelsToScan:
-                                if c['name'] == chan:
-                                    exists = True
-                                    break
-                            if not exists:
-                                self.channelsToScan.append({"name":
-                                    unicode(chan, errors='ignore'),
-                                    "usercount": '?', "topic":
-                                    unicode("undefined", errors='ignore')})
+                        if self.config['channelstocheck'] is not None:
+                            # Add all mandatory join channels
+                            for chan in self.config['channelstocheck']:
+                                exists = False
+                                for c in self.channelsToScan:
+                                    if c['name'] == chan:
+                                        exists = True
+                                        break
+                                if not exists:
+                                    self.channelsToScan.append({"name":
+                                        unicode(chan, errors='ignore'),
+                                        "usercount": '?', "topic":
+                                        unicode("undefined", errors='ignore')})
                         if len(self.channelsToScan) > 0:
                             self.join(self.channelsToScan[0]["name"])
                             del self.channelsToScan[0]
