@@ -20,8 +20,8 @@ def PrintHelp():
     print("Gathering information from IRC servers")
     print("By Brian Wallace (@botnet_hunter)")
     print("")
-    print("  -x, --ssl                     SSL connection")
-    print("  -h, --help                    Print this message")
+    print("  -x --ssl                      SSL connection")
+    print("  -h --help                     Print this message")
     print("  -p --password PASS            Server password")
     print("  -c --channels #chan1,#chan2   Additional channels to check")
     print("")
@@ -79,7 +79,6 @@ class IRCBot:
         self.send("LIST")
 
     def start(self):
-        socket.setdefaulttimeout(30)
         self.server = socket.gethostbyname(self.config['server'])
         self.port = int(self.config['port'])
         if self.config['ssl'] is True:
@@ -159,7 +158,8 @@ class IRCBot:
                                     self.userList[cmd[4]].append(unicode(nick, errors='ignore'))
                                     if nick not in self.usersToScan:
                                         self.usersToScan.append(nick)
-                        self.usersToScan.append(self.nick)
+                        if self.usersToScan.count == 0:
+                            self.usersToScan.append(self.nick)
                     if cmd[1] == "366" or cmd[1] == "475" or cmd[1] == "477" or cmd[1] == "520":
                         self.part(cmd[3])
 
