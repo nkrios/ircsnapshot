@@ -79,6 +79,7 @@ class IRCBot:
         self.send("LIST")
 
     def start(self):
+        socket.setdefaulttimeout(30)
         self.server = socket.gethostbyname(self.config['server'])
         self.port = int(self.config['port'])
         if self.config['ssl'] is True:
