@@ -15,7 +15,7 @@ version = "0.2"
 
 def PrintHelp():
     global version
-    print("usage: ircsnapshot.py [-h] [-x] [-p PASS] [-c #chan1] [--proxy SERVER[:PORT] server[:port]")
+    print("usage: ircsnapshot.py [-h] [-x] [-p PASS] [-c #chan1] [--proxy SERVER[:PORT]] server[:port]")
     print("")
     print(("IRCSnapshot v" + version))
     print("Gathering information from IRC servers")
