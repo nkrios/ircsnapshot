@@ -7,23 +7,26 @@ from datetime import datetime
 from argparse import ArgumentParser
 from random import choice
 from ssl import wrap_socket
-from sys import exit
+from sys import exit, exc_info
+import socks
 
-version = "0.1"
+version = "0.2"
 
 
 def PrintHelp():
     global version
-    print("usage: ircsnapshot.py [-h] [-x] [-p PASS] [-c #chan1] server[:port]")
+    print("usage: ircsnapshot.py [-h] [-x] [-p PASS] [-c #chan1] [--proxy SERVER[:PORT] server[:port]")
     print("")
     print(("IRCSnapshot v" + version))
     print("Gathering information from IRC servers")
     print("By Brian Wallace (@botnet_hunter)")
     print("")
     print("  -x --ssl                      SSL connection")
-    print("  -h --help                     Print this message")
     print("  -p --password PASS            Server password")
     print("  -c --channels #chan1,#chan2   Additional channels to check")
+    print("  --proxy SERVER[:PORT]         SOCKS4 proxy to connect through")
+    print("")
+    print("  -h --help                     Print this message")
     print("")
 
 
@@ -46,6 +49,9 @@ class IRCBot:
 
         self.channelsToScan = []
         self.usersToScan = []
+
+        self.log(dumps({'config': self.config, 'nick': self.nick,
+            'user': self.user, 'real': self.real}))
 
     def log(self, message):
         with open(self.config['server'] + ".log.txt", "a") as myfile:
@@ -79,12 +85,23 @@ class IRCBot:
         self.send("LIST")
 
     def start(self):
+        # todo - DNS resolution through proxy
         self.server = socket.gethostbyname(self.config['server'])
         self.port = int(self.config['port'])
-        if self.config['ssl'] is True:
-            self.sock = wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+        if self.config['proxyhost'] is None:
+            if self.config['ssl'] is True:
+                self.sock = wrap_socket(socket.socket(socket.AF_INET,
+                    socket.SOCK_STREAM))
+            else:
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            if self.config['ssl'] is True:
+                self.sock = wrap_socket(socks.socksocket())
+            else:
+                self.sock = socks.socksocket()
+            # todo - Add more proxy configuration
+            self.sock.setproxy(socks.PROXY_TYPE_SOCKS4,
+                self.config['proxyhost'], self.config['proxyport'])
         self.sock.connect((self.server, self.port))
 
         #send pass
@@ -206,6 +223,8 @@ parser.add_argument('-p', '--password', metavar='password', type=str, nargs='?',
     default=None)
 parser.add_argument('-c', '--channels', metavar='channels', type=str, nargs='?',
     default=None)
+parser.add_argument('--proxy', metavar='proxy', type=str, nargs='?',
+    default=None)
 parser.add_argument('-x', '--ssl', default=False, required=False,
     action='store_true')
 parser.add_argument('-h', '--help', default=False, required=False,
@@ -219,6 +238,10 @@ if args.help or args.server is None:
 server = args.server
 port = "6667"
 password = args.password
+
+proxyhost = args.proxy
+proxyport = 9050
+
 channels = None
 if args.channels is not None:
     channels = args.channels.split(',')
@@ -227,12 +250,19 @@ if server.find(":") != -1:
     port = server[server.find(":") + 1:]
     server = server[:server.find(":")]
 
+if proxyhost is not None:
+    if proxyhost.find(":") != -1:
+        proxyport = proxyhost[proxyhost.find(":") + 1:]
+        proxyhost = proxyhost[:proxyhost.find(":")]
+
 config = {
     'server': server,
     'port': port,
     'pass': password,
     'ssl': args.ssl,
-    'channelstocheck': channels
+    'channelstocheck': channels,
+    'proxyhost': proxyhost,
+    'proxyport': int(proxyport)
 }
 
 bot = IRCBot(config)
@@ -241,6 +271,7 @@ try:
 except:
     print("An error occurred while connected to the IRC server")
     print("Still going to write out the results")
+    print((exc_info()))
 
 with open(config['server'] + ".channels.json", "a") as myfile:
     myfile.write(dumps(bot.channels, sort_keys=True, indent=4,
