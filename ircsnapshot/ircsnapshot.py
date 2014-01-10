@@ -176,11 +176,10 @@ class IRCBot:
                                 continue
                             if nick[0] == "@" or nick[0] == "~" or nick[0] == "%" or nick[0] == "+":
                                 nick = nick[1:]
-                            if nick not in self.users:
-                                if nick not in self.userList[cmd[4]]:
-                                    self.userList[cmd[4]].append(unicode(nick, errors='ignore'))
-                                    if nick not in self.usersToScan:
-                                        self.usersToScan.append(nick)
+                            if nick not in self.userList[cmd[4]]:
+                                self.userList[cmd[4]].append(unicode(nick, errors='ignore'))
+                                if nick not in self.usersToScan and nick not in self.users:
+                                    self.usersToScan.append(nick)
                         if self.usersToScan.count == 0:
                             self.usersToScan.append(self.nick)
                     if cmd[1] == "366" or cmd[1] == "475" or cmd[1] == "473" or cmd[1] == "477" or cmd[1] == "470" or cmd[1] == "474" or cmd[1] == "520":
