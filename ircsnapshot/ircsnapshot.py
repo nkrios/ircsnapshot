@@ -54,10 +54,15 @@ class IRCBot:
             'user': self.user, 'real': self.real}))
 
     def log(self, message):
+        try:
+            message = unicode(message)
+            message = message.encode("utf-8")
+        except:
+            message = message
         with open(self.config['server'] + ".log.txt", "a") as myfile:
-            myfile.write(unicode("[" + str(datetime.utcnow()) + "] " +
-                message + "\r\n", encoding='utf-8', errors='ignore'))
-        print((unicode("[" + str(datetime.utcnow()) + "] " + message, encoding='utf-8', errors='ignore')))
+            myfile.write("[" + str(datetime.utcnow()) + "] " +
+                message + "\r\n")
+        print("[" + str(datetime.utcnow()) + "] " + message)
 
     def send(self, message):
         self.log(message)
@@ -143,9 +148,9 @@ class IRCBot:
                             sleep(0.25)
                             self.list()
                     if cmd[1] == "322":
-                        chanDesc = {"name": unicode(cmd[3], encoding='utf-8', errors='ignore'),
+                        chanDesc = {"name": unicode(cmd[3], errors='ignore'),
                             "usercount": cmd[4],
-                            "topic": unicode(string.split(line, ":")[2], encoding='utf-8',
+                            "topic": unicode(string.split(line, ":")[2],
                             errors='ignore')}
                         self.channels[chanDesc['name']] = chanDesc
                         if chanDesc['name'] != "*":
@@ -161,11 +166,9 @@ class IRCBot:
                                         break
                                 if not exists:
                                     self.channelsToScan.append({"name":
-                                        unicode(chan, encoding='utf-8',
-                                        errors='ignore'),
+                                        unicode(chan, errors='ignore'),
                                         "usercount": '?', "topic":
-                                        unicode("undefined", encoding='utf-8',
-                                        errors='ignore')})
+                                        unicode("undefined", errors='ignore')})
                         if len(self.channelsToScan) > 0:
                             self.join(self.channelsToScan[0]["name"])
                             del self.channelsToScan[0]
