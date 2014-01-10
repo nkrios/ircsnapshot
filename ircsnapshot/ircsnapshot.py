@@ -198,6 +198,8 @@ class IRCBot:
                             if len(self.usersToScan) > 0:
                                 self.whois(self.usersToScan[0])
                                 del self.usersToScan[0]
+                            else:
+                                self.send("QUIT :")
                     if cmd[1] == "311" or cmd[1] == "312" or cmd[1] == "313" or cmd[1] == "314" or cmd[1] == "315" or cmd[1] == "316" or cmd[1] == "338" or cmd[1] == "317":
                         if cmd[3] not in self.users:
                             self.users[cmd[3]] = []
