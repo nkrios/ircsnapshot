@@ -143,9 +143,9 @@ class IRCBot:
                             sleep(0.25)
                             self.list()
                     if cmd[1] == "322":
-                        chanDesc = {"name": unicode(cmd[3], errors='ignore'),
+                        chanDesc = {"name": str(cmd[3], errors='ignore'),
                             "usercount": cmd[4],
-                            "topic": unicode(string.split(line, ":")[2],
+                            "topic": str(string.split(line, ":")[2],
                             errors='ignore')}
                         self.channels[chanDesc['name']] = chanDesc
                         if chanDesc['name'] != "*":
@@ -161,9 +161,9 @@ class IRCBot:
                                         break
                                 if not exists:
                                     self.channelsToScan.append({"name":
-                                        unicode(chan, errors='ignore'),
+                                        str(chan, errors='ignore'),
                                         "usercount": '?', "topic":
-                                        unicode("undefined", errors='ignore')})
+                                        str("undefined", errors='ignore')})
                         if len(self.channelsToScan) > 0:
                             self.join(self.channelsToScan[0]["name"])
                             del self.channelsToScan[0]
