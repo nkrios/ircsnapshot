@@ -55,9 +55,9 @@ class IRCBot:
 
     def log(self, message):
         with open(self.config['server'] + ".log.txt", "a") as myfile:
-            myfile.write("[" + str(datetime.utcnow()) + "] " +
-                message + "\r\n")
-        print(("[" + str(datetime.utcnow()) + "] " + message))
+            myfile.write(unicode("[" + str(datetime.utcnow()) + "] " +
+                message + "\r\n", encoding='utf-8', errors='ignore'))
+        print((unicode("[" + str(datetime.utcnow()) + "] " + message, encoding='utf-8', errors='ignore')))
 
     def send(self, message):
         self.log(message)
