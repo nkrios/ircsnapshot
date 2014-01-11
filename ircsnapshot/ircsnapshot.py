@@ -154,7 +154,7 @@ class IRCBot:
                     if cmd[1] == "322":
                         chanDesc = {"name": unicode(cmd[3], errors='ignore'),
                             "usercount": cmd[4],
-                            "topic": unicode(string.split(line, ":")[2],
+                            "topic": unicode(line[line.find(":", 1) + 1:],
                             errors='ignore')}
                         self.channels[chanDesc['name']] = chanDesc
                         if chanDesc['name'] != "*":
