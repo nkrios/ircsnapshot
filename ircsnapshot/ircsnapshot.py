@@ -15,12 +15,16 @@ version = "0.2"
 
 def PrintHelp():
     global version
-    print("usage: ircsnapshot.py [-h] [-x] [-p PASS] [-c #chan1] [--proxy SERVER[:PORT]] server[:port]")
+    print("usage: ircsnapshot.py [-h] [options] server[:port]")
     print("")
     print(("IRCSnapshot v" + version))
     print("Gathering information from IRC servers")
     print("By Brian Wallace (@botnet_hunter)")
     print("")
+    print("Options:")
+    print("  -n --nick NICK                Set nick of bot")
+    print("  -u --user USER                Set user of bot")
+    print("  -r --real REAL                Set real name of bot")
     print("  -x --ssl                      SSL connection")
     print("  -p --password PASS            Server password")
     print("  -c --channels #chan1,#chan2   Additional channels to check")
@@ -39,9 +43,9 @@ class IRCBot:
     def __init__(self, config):
         self.config = config
 
-        self.nick = id_generator(10)
-        self.user = id_generator(10)
-        self.real = id_generator(10)
+        self.nick = config["nick"]
+        self.user = config["user"]
+        self.real = config["real"]
 
         self.channels = {}
         self.users = {}
@@ -113,7 +117,7 @@ class IRCBot:
         if self.config["pass"] is not None:
             self.send("PASS " + self.config["pass"])
 
-        self.send("USER " + self.user + " 127.0.0.1 localhost :" + self.real)
+        self.send("USER " + self.user + " 127.0.0.1 " + self.server + " :" + self.real)
         self.set_nick(self.nick)
         self.main()
 
@@ -179,9 +183,9 @@ class IRCBot:
                             " "):
                             if nick == "" or nick == " ":
                                 continue
-                            if nick[0] == "@" or nick[0] == "~" or nick[0] == "%" or nick[0] == "+":
+                            if nick[0] == "@" or nick[0] == "~" or nick[0] == "%" or nick[0] == "+" or nick[0] == "&":
                                 nick = nick[1:]
-                            if nick not in self.userList[cmd[4]]:
+                            if nick not in self.userList[cmd[4]] and nick != self.nick:
                                 self.userList[cmd[4]].append(unicode(nick, errors='ignore'))
                                 if nick not in self.usersToScan and nick not in self.users:
                                     self.usersToScan.append(nick)
@@ -205,10 +209,12 @@ class IRCBot:
                                 del self.usersToScan[0]
                             else:
                                 self.send("QUIT :")
-                    if cmd[1] == "311" or cmd[1] == "312" or cmd[1] == "313" or cmd[1] == "314" or cmd[1] == "315" or cmd[1] == "316" or cmd[1] == "338" or cmd[1] == "317":
-                        if cmd[3] not in self.users:
-                            self.users[cmd[3]] = []
-                        self.users[cmd[3]].append(unicode(line, errors='ignore'))
+                    if cmd[1] == "311" or cmd[1] == "312" or cmd[1] == "319" or cmd[1] == "313" or cmd[1] == "314" or cmd[1] == "315" or cmd[1] == "316" or cmd[1] == "338" or cmd[1] == "317":
+                        if cmd[3] != self.nick:
+                            if cmd[3] not in self.users:
+                                self.users[cmd[3]] = []
+                            if unicode(line, errors='ignore') not in self.users[cmd[3]]:
+                                self.users[cmd[3]].append(unicode(line, errors='ignore'))
                     if cmd[1] == "318":
                         if len(self.usersToScan) > 0:
                             sleep(0.2)
@@ -229,6 +235,14 @@ parser.add_argument('-p', '--password', metavar='password', type=str, nargs='?',
     default=None)
 parser.add_argument('-c', '--channels', metavar='channels', type=str, nargs='?',
     default=None)
+
+parser.add_argument('-n', '--nick', metavar='nick', type=str, nargs='?',
+    default=id_generator(10))
+parser.add_argument('-r', '--real', metavar='real', type=str, nargs='?',
+    default=id_generator(10))
+parser.add_argument('-u', '--user', metavar='user', type=str, nargs='?',
+    default=id_generator(10))
+
 parser.add_argument('--proxy', metavar='proxy', type=str, nargs='?',
     default=None)
 parser.add_argument('-x', '--ssl', default=False, required=False,
@@ -268,7 +282,10 @@ config = {
     'ssl': args.ssl,
     'channelstocheck': channels,
     'proxyhost': proxyhost,
-    'proxyport': int(proxyport)
+    'proxyport': int(proxyport),
+    'nick': args.nick,
+    'user': args.user,
+    'real': args.real
 }
 
 bot = IRCBot(config)
