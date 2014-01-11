@@ -4,12 +4,16 @@ ircsnapshot
 Tool to gather information from IRC servers
 
 <pre>$ python ircsnapshot.py -h
-usage: ircsnapshot.py [-h] [-x] [-p PASS] [-c #chan1] [--proxy SERVER[:PORT]] server[:port]
+usage: ircsnapshot.py [-h] [options] server[:port]
 
-IRCSnapshot v0.2
+IRCSnapshot v0.3
 Gathering information from IRC servers
 By Brian Wallace (@botnet_hunter)
 
+Options:
+  -n --nick NICK                Set nick of bot
+  -u --user USER                Set user of bot
+  -r --real REAL                Set real name of bot
   -x --ssl                      SSL connection
   -p --password PASS            Server password
   -c --channels #chan1,#chan2   Additional channels to check
