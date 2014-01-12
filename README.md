@@ -6,7 +6,7 @@ Tool to gather information from IRC servers
 <pre>$ python ircsnapshot.py -h
 usage: ircsnapshot.py [-h] [options] server[:port]
 
-IRCSnapshot v0.3
+IRCSnapshot v0.4
 Gathering information from IRC servers
 By Brian Wallace (@botnet_hunter)
 
