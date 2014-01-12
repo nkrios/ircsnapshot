@@ -10,7 +10,7 @@ from ssl import wrap_socket
 from sys import exit, exc_info
 import socks
 
-version = "0.3"
+version = "0.4"
 
 
 def PrintHelp():
