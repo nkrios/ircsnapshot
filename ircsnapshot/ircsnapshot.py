@@ -54,6 +54,8 @@ class IRCBot:
         self.channelsToScan = []
         self.usersToScan = []
 
+        self.listDone = False
+
         self.log(dumps({'config': self.config, 'nick': self.nick,
             'user': self.user, 'real': self.real}))
 
@@ -110,7 +112,7 @@ class IRCBot:
                 self.sock = socks.socksocket()
             # todo - Add more proxy configuration
             self.sock.setproxy(socks.PROXY_TYPE_SOCKS4,
-                self.config['proxyhost'], self.config['proxyport'])
+                self.config['proxyhost'], self.config['proxyport'], True)
         self.sock.connect((self.server, self.port))
 
         #send pass
@@ -138,9 +140,6 @@ class IRCBot:
                     if len(self.channelsToScan) > 0:
                         self.join(self.channelsToScan[0]["name"])
                         del self.channelsToScan[0]
-                    if len(self.usersToScan) > 0:
-                        self.whois(self.usersToScan[0])
-                        del self.usersToScan[0]
                 cmd = string.split(line, " ")
                 if len(cmd) > 1:
                     if cmd[1] == "433":
@@ -152,10 +151,7 @@ class IRCBot:
                             sleep(0.25)
                             self.list()
                     if cmd[1] == "322":
-                        chanDesc = {"name": unicode(cmd[3], errors='ignore'),
-                            "usercount": cmd[4],
-                            "topic": unicode(line[line.find(":", 1) + 1:],
-                            errors='ignore')}
+                        chanDesc = {"name": unicode(cmd[3], errors='ignore'), "usercount": cmd[4], "topic": unicode(line[line.find(":", 1) + 1:], errors='ignore')}
                         self.channels[chanDesc['name']] = chanDesc
                         if chanDesc['name'] != "*":
                             self.channelsToScan.append(chanDesc)
@@ -169,13 +165,11 @@ class IRCBot:
                                         exists = True
                                         break
                                 if not exists:
-                                    self.channelsToScan.append({"name":
-                                        unicode(chan, errors='ignore'),
-                                        "usercount": '?', "topic":
-                                        unicode("undefined", errors='ignore')})
+                                    self.channelsToScan.append({"name": unicode(chan, errors='ignore'), "usercount": '?', "topic": unicode("undefined", errors='ignore')})
                         if len(self.channelsToScan) > 0:
                             self.join(self.channelsToScan[0]["name"])
                             del self.channelsToScan[0]
+                        self.listDone = True
                     if cmd[1] == "353":
                         if cmd[4] not in self.userList:
                             self.userList[cmd[4]] = []
@@ -196,19 +190,18 @@ class IRCBot:
 
                         # join next
                         sleep(0.25)
-                        if len(self.usersToScan) > 0:
-                            self.whois(self.usersToScan[0])
-                            del self.usersToScan[0]
-                        elif len(self.channelsToScan) > 0:
-                            self.join(self.channelsToScan[0]["name"])
-                            del self.channelsToScan[0]
-                        else:
-                            self.log("Done scanning channels")
-                            if len(self.usersToScan) > 0:
-                                self.whois(self.usersToScan[0])
-                                del self.usersToScan[0]
+
+                        if self.listDone == True:
+                            if len(self.channelsToScan) > 0:
+                                self.join(self.channelsToScan[0]["name"])
+                                del self.channelsToScan[0]
                             else:
-                                self.send("QUIT :")
+                                self.log("Done scanning channels")
+                                if len(self.usersToScan) > 0:
+                                    self.whois(self.usersToScan[0])
+                                    del self.usersToScan[0]
+                                else:
+                                    self.send("QUIT :")
                     if cmd[1] == "311" or cmd[1] == "312" or cmd[1] == "319" or cmd[1] == "313" or cmd[1] == "314" or cmd[1] == "315" or cmd[1] == "316" or cmd[1] == "338" or cmd[1] == "317":
                         if cmd[3] != self.nick:
                             if cmd[3] not in self.users:
@@ -216,16 +209,14 @@ class IRCBot:
                             if unicode(line, errors='ignore') not in self.users[cmd[3]]:
                                 self.users[cmd[3]].append(unicode(line, errors='ignore'))
                     if cmd[1] == "318":
-                        if len(self.usersToScan) > 0:
-                            sleep(0.2)
-                            self.whois(self.usersToScan[0])
-                            del self.usersToScan[0]
-                        elif len(self.channelsToScan) > 0:
-                            self.join(self.channelsToScan[0]["name"])
-                            del self.channelsToScan[0]
-                        else:
-                            self.send("QUIT :")
-                            break
+                        if self.listDone == True:
+                            if len(self.usersToScan) > 0:
+                                sleep(0.2)
+                                self.whois(self.usersToScan[0])
+                                del self.usersToScan[0]
+                            else:
+                                self.send("QUIT :")
+                                break
 
 
 parser = ArgumentParser(add_help=False)
