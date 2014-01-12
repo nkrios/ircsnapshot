@@ -53,8 +53,11 @@ class IRCBot:
 
         self.channelsToScan = []
         self.usersToScan = []
+        self.links = []
 
         self.listDone = False
+
+        self.whoisDataCodes = ["307", "308", "309", "310", "311", "312", "313", "316", "317", "319", "320", "330", "335", "338", "378", "379", "615", "616", "617", "671", "689", "690", ]
 
         self.log(dumps({'config': self.config, 'nick': self.nick,
             'user': self.user, 'real': self.real}))
@@ -150,11 +153,15 @@ class IRCBot:
                             hasListed = True
                             sleep(0.25)
                             self.list()
+                            self.send("LINKS")
                     if cmd[1] == "322":
                         chanDesc = {"name": unicode(cmd[3], errors='ignore'), "usercount": cmd[4], "topic": unicode(line[line.find(":", 1) + 1:], errors='ignore')}
                         self.channels[chanDesc['name']] = chanDesc
                         if chanDesc['name'] != "*":
                             self.channelsToScan.append(chanDesc)
+                    if cmd[1] == "364":
+                        linkDesc = {"mask": unicode(cmd[3], errors='ignore'), "server": unicode(cmd[4], errors='ignore'), "hopcount": unicode(cmd[5][1:], errors='ignore'), "info": line[line.find(' ', line.find(":", 1)) + 1:]}
+                        self.links.append(linkDesc)
                     if cmd[1] == "323":
                         if self.config['channelstocheck'] is not None:
                             # Add all mandatory join channels
@@ -202,7 +209,7 @@ class IRCBot:
                                     del self.usersToScan[0]
                                 else:
                                     self.send("QUIT :")
-                    if cmd[1] == "311" or cmd[1] == "312" or cmd[1] == "319" or cmd[1] == "313" or cmd[1] == "314" or cmd[1] == "315" or cmd[1] == "316" or cmd[1] == "338" or cmd[1] == "317":
+                    if cmd[1] in self.whoisDataCodes:
                         if cmd[3] != self.nick:
                             if cmd[3] not in self.users:
                                 self.users[cmd[3]] = []
@@ -295,4 +302,7 @@ with open(config['server'] + ".userList.json", "a") as myfile:
         separators=(',', ': ')))
 with open(config['server'] + ".users.json", "a") as myfile:
     myfile.write(dumps(bot.users, sort_keys=True, indent=4,
+        separators=(',', ': ')))
+with open(config['server'] + ".links.json", "a") as myfile:
+    myfile.write(dumps(bot.links, sort_keys=True, indent=4,
         separators=(',', ': ')))
