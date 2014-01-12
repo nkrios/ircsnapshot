@@ -25,12 +25,14 @@ Options:
 
 Output
 ======
+<pre>
 The UI writes the contents of the log, but the primary output is to files in the executing directory.
 server.log.txt - Log file
 server.links.json - JSON encoded list of links visible to connecting user
 server.channels.json - JSON encoded list of channels visible on the server
 server.users.json - JSON encoded WHOIS data for each user visible on the server
 server.userList.json - JSON encoded list of users in each channel
+</pre>
 
 Dependencies
 ============
