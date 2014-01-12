@@ -31,4 +31,4 @@ Notes
 =====
 Please report any issues you encounter.  This tool has proven to be useful in a few cases so I decided it would be good to publish.
 
-Proxy support currently is just for SOCKS4.  This is compatible with Tor.  I will add more proxy support in the future.  It is important to note that DNS queries will NOT go through the selected proxy just yet, but is being worked on for the future.
+Proxy support currently is just for SOCKS4a.  This is compatible with Tor.  I will add more proxy support in the future.  DNS queries will be sent through the proxy.
