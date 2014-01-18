@@ -10,7 +10,7 @@ from ssl import wrap_socket
 from sys import exit, exc_info
 import socks
 
-version = "0.4"
+version = "0.5"
 
 
 def PrintHelp():
@@ -50,6 +50,7 @@ class IRCBot:
         self.channels = {}
         self.users = {}
         self.userList = {}
+        self.linkList = {}
 
         self.channelsToScan = []
         self.usersToScan = []
@@ -192,7 +193,7 @@ class IRCBot:
                                     self.usersToScan.append(nick)
                         if self.usersToScan.count == 0:
                             self.usersToScan.append(self.nick)
-                    if cmd[1] == "366" or cmd[1] == "475" or cmd[1] == "473" or cmd[1] == "477" or cmd[1] == "470" or cmd[1] == "474" or cmd[1] == "520":
+                    if cmd[1] == "366" or cmd[1] == "475" or cmd[1] == "473" or cmd[1] == "477" or cmd[1] == "470" or cmd[1] == "474" or cmd[1] == "520" or cmd[1] == "471":
                         self.part(cmd[3])
 
                         # join next
@@ -213,6 +214,12 @@ class IRCBot:
                         if cmd[3] != self.nick:
                             if cmd[3] not in self.users:
                                 self.users[cmd[3]] = []
+                            if cmd[1] == "312" and len(cmd) > 4:
+                                #contains server location
+                                if cmd[4] not in self.linkList:
+                                    self.linkList[cmd[4]] = []
+                                if cmd[3] not in self.linkList[cmd[4]]:
+                                    self.linkList[cmd[4]].append(cmd[3])
                             if unicode(line, errors='ignore') not in self.users[cmd[3]]:
                                 self.users[cmd[3]].append(unicode(line, errors='ignore'))
                     if cmd[1] == "318":
@@ -305,4 +312,7 @@ with open(config['server'] + ".users.json", "a") as myfile:
         separators=(',', ': ')))
 with open(config['server'] + ".links.json", "a") as myfile:
     myfile.write(dumps(bot.links, sort_keys=True, indent=4,
+        separators=(',', ': ')))
+with open(config['server'] + ".linkList.json", "a") as myfile:
+    myfile.write(dumps(bot.linkList, sort_keys=True, indent=4,
         separators=(',', ': ')))
