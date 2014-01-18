@@ -10,7 +10,7 @@ from ssl import wrap_socket
 from sys import exit, exc_info
 import socks
 
-version = "0.5"
+version = "0.6"
 
 
 def PrintHelp():
@@ -303,18 +303,9 @@ except:
     print("Still going to write out the results")
     print((exc_info()))
 
-with open(config['server'] + ".channels.json", "a") as myfile:
-    myfile.write(dumps(bot.channels, sort_keys=True, indent=4,
-        separators=(',', ': ')))
-with open(config['server'] + ".userList.json", "a") as myfile:
-    myfile.write(dumps(bot.userList, sort_keys=True, indent=4,
-        separators=(',', ': ')))
-with open(config['server'] + ".users.json", "a") as myfile:
-    myfile.write(dumps(bot.users, sort_keys=True, indent=4,
-        separators=(',', ': ')))
-with open(config['server'] + ".links.json", "a") as myfile:
-    myfile.write(dumps(bot.links, sort_keys=True, indent=4,
-        separators=(',', ': ')))
-with open(config['server'] + ".linkList.json", "a") as myfile:
-    myfile.write(dumps(bot.linkList, sort_keys=True, indent=4,
+results = {'channels': bot.channels, 'userList': bot.userList,
+    'users': bot.users, 'links': bot.links, 'linkList': bot.linkList}
+
+with open(config['server'] + ".json", "a") as myfile:
+    myfile.write(dumps(results, sort_keys=True, indent=4,
         separators=(',', ': ')))

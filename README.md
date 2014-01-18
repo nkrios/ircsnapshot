@@ -6,7 +6,7 @@ Tool to gather information from IRC servers
 <pre>$ python ircsnapshot.py -h
 usage: ircsnapshot.py [-h] [options] server[:port]
 
-IRCSnapshot v0.5
+IRCSnapshot v0.6
 Gathering information from IRC servers
 By Brian Wallace (@botnet_hunter)
 
@@ -25,17 +25,18 @@ Options:
 
 Output
 ======
+The UI writes the contents of the log, but the primary output is to a json file in the executing directory.
 <pre>
-The UI writes the contents of the log, but the primary output is to files in the executing directory.
 server.log.txt - Log file
-server.links.json - JSON encoded list of links visible to connecting user
-server.channels.json - JSON encoded list of channels visible on the server
-server.users.json - JSON encoded WHOIS data for each user visible on the server
-server.userList.json - JSON encoded list of users in each channel
-server.linkList.json - JSON encoded list of showing which users are on which links
+server.json - JSON encoded list of links visible to connecting user
+{
+    'links': [], // List of link metadata
+    'linkList': {}, // Dictionary of links and users connected to them
+    'channels': {}, // Dictionary of channels and their metadata
+    'userList': {}, // Dictionary of channels and users in them
+    'users': {} // Dictionary of users and their whois data
+}
 </pre>
-
-In the future, these JSON files may be combined into a single file but with utilities to easily parse them.
 
 Dependencies
 ============
