@@ -42,6 +42,27 @@ Dependencies
 ============
 SockiPy
 
+Support Scripts
+===============
+<pre>
+$ python to.gexf.py
+usage: to.gexf.py [-h] [options] input
+
+to.gexf v0.1
+Convert IRCSnapShot output to Gephi compatible format
+Gexf output is to STDOUT
+By Brian Wallace (@botnet_hunter)
+
+GPS:
+  -m MaxMind Location           Location of Maxmind database files (default .)
+
+  -h --help                     Print this message
+
+You can get Maxmind databases from Maxmind.com.
+Free database: http://geolite.maxmind.com/download/geoip/database/GeoLiteCity_CSV/GeoLiteCity-latest.zip
+
+</pre>
+
 Notes
 =====
 Please report any issues you encounter.  This tool has proven to be useful in a few cases so I decided it would be good to publish.
