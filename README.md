@@ -35,6 +35,8 @@ server.userList.json - JSON encoded list of users in each channel
 server.linkList.json - JSON encoded list of showing which users are on which links
 </pre>
 
+In the future, these JSON files may be combined into a single file but with utilities to easily parse them.
+
 Dependencies
 ============
 SockiPy
