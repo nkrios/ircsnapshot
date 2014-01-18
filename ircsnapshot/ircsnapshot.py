@@ -101,7 +101,7 @@ class IRCBot:
 
     def start(self):
         # todo - DNS resolution through proxy
-        self.server = socket.gethostbyname(self.config['server'])
+        self.server = self.config['server']
         self.port = int(self.config['port'])
         if self.config['proxyhost'] is None:
             if self.config['ssl'] is True:
@@ -111,12 +111,14 @@ class IRCBot:
                 self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
             if self.config['ssl'] is True:
-                self.sock = wrap_socket(socks.socksocket())
+                temp_socket = socks.socksocket()
+                temp_socket.setproxy(socks.PROXY_TYPE_SOCKS4,
+                    self.config['proxyhost'], self.config['proxyport'], True)
+                self.sock = wrap_socket(temp_socket)
             else:
                 self.sock = socks.socksocket()
-            # todo - Add more proxy configuration
-            self.sock.setproxy(socks.PROXY_TYPE_SOCKS4,
-                self.config['proxyhost'], self.config['proxyport'], True)
+                self.sock.setproxy(socks.PROXY_TYPE_SOCKS4,
+                    self.config['proxyhost'], self.config['proxyport'], True)
         self.sock.connect((self.server, self.port))
 
         #send pass
