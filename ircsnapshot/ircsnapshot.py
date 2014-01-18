@@ -9,6 +9,8 @@ from random import choice
 from ssl import wrap_socket
 from sys import exit, exc_info
 import socks
+import os
+from random import random
 
 version = "0.6"
 
@@ -29,6 +31,9 @@ def PrintHelp():
     print("  -p --password PASS            Server password")
     print("  -c --channels #chan1,#chan2   Additional channels to check")
     print("  --proxy SERVER[:PORT]         SOCKS4 proxy to connect through")
+    print("  -o --output Directory         Output directory (default .)")
+    print("  -t --throttle 1.0             Seconds to sleep before sending messages (default 0.25)")
+    print("                                Random values between 0 and this value are chosen each time")
     print("")
     print("  -h --help                     Print this message")
     print("")
@@ -58,7 +63,11 @@ class IRCBot:
 
         self.listDone = False
 
-        self.whoisDataCodes = ["307", "308", "309", "310", "311", "312", "313", "316", "317", "319", "320", "330", "335", "338", "378", "379", "615", "616", "617", "671", "689", "690", ]
+        self.whoisDataCodes = ["307", "308", "309", "310", "311", "312", "313",
+            "316", "317", "319", "320", "330", "335", "338", "378", "379",
+            "615", "616", "617", "671", "689", "690", ]
+        self.channelJoinCodes = {"366", "470", "471", "473", "474", "475",
+            "476", "477", "479", "519", "520"}
 
         self.log(dumps({'config': self.config, 'nick': self.nick,
             'user': self.user, 'real': self.real}))
@@ -69,17 +78,20 @@ class IRCBot:
             message = message.encode("utf-8")
         except:
             message = message
-        with open(self.config['server'] + ".log.txt", "a") as myfile:
+        with open(self.config['outputdir'] + "/" + self.config['server'] +
+                ".log.txt", "a") as myfile:
             myfile.write("[" + str(datetime.utcnow()) + "] " +
                 message + "\r\n")
         print("[" + str(datetime.utcnow()) + "] " + message)
 
-    def send(self, message):
+    def send(self, message, overrideThrottle=False):
+        if overrideThrottle is False:
+            sleep(float(self.config['throttleLevel']) * random())
         self.log(message)
         self.sock.sendall(message + "\r\n")
 
     def set_nick(self, nick):
-        self.send("NICK " + nick)
+        self.send("NICK " + nick, True)
 
     def privmsg(self, to, msg):
         self.send("PRIVMSG " + to + " :" + msg)
@@ -123,9 +135,10 @@ class IRCBot:
 
         #send pass
         if self.config["pass"] is not None:
-            self.send("PASS " + self.config["pass"])
+            self.send("PASS " + self.config["pass"], True)
 
-        self.send("USER " + self.user + " 127.0.0.1 " + self.server + " :" + self.real)
+        self.send("USER " + self.user + " 127.0.0.1 " + self.server + " :" +
+            self.real, True)
         self.set_nick(self.nick)
         self.main()
 
@@ -142,7 +155,7 @@ class IRCBot:
                 line = line[:-2]
                 self.log(line)
                 if line[:6] == "PING :":
-                    self.send("PONG :" + line[6:])
+                    self.send("PONG :" + line[6:], True)
                     if len(self.channelsToScan) > 0:
                         self.join(self.channelsToScan[0]["name"])
                         del self.channelsToScan[0]
@@ -154,7 +167,6 @@ class IRCBot:
                         # can start scanning
                         if hasListed is False:
                             hasListed = True
-                            sleep(0.25)
                             self.list()
                             self.send("LINKS")
                     if cmd[1] == "322":
@@ -195,11 +207,10 @@ class IRCBot:
                                     self.usersToScan.append(nick)
                         if self.usersToScan.count == 0:
                             self.usersToScan.append(self.nick)
-                    if cmd[1] == "366" or cmd[1] == "475" or cmd[1] == "473" or cmd[1] == "477" or cmd[1] == "470" or cmd[1] == "474" or cmd[1] == "520" or cmd[1] == "471":
+                    if cmd[1] in self.channelJoinCodes:
                         self.part(cmd[3])
 
                         # join next
-                        sleep(0.25)
 
                         if self.listDone == True:
                             if len(self.channelsToScan) > 0:
@@ -227,7 +238,6 @@ class IRCBot:
                     if cmd[1] == "318":
                         if self.listDone == True:
                             if len(self.usersToScan) > 0:
-                                sleep(0.2)
                                 self.whois(self.usersToScan[0])
                                 del self.usersToScan[0]
                             else:
@@ -242,6 +252,10 @@ parser.add_argument('-p', '--password', metavar='password', type=str, nargs='?',
     default=None)
 parser.add_argument('-c', '--channels', metavar='channels', type=str, nargs='?',
     default=None)
+parser.add_argument('-o', '--output', metavar='output', type=str, nargs='?',
+    default='.')
+parser.add_argument('-t', '--throttle', metavar='throttle', type=float,
+    nargs='?', default='1.0')
 
 parser.add_argument('-n', '--nick', metavar='nick', type=str, nargs='?',
     default=id_generator(10))
@@ -282,6 +296,9 @@ if proxyhost is not None:
         proxyport = proxyhost[proxyhost.find(":") + 1:]
         proxyhost = proxyhost[:proxyhost.find(":")]
 
+if not os.path.exists(args.output):
+    os.makedirs(args.output)
+
 config = {
     'server': server,
     'port': port,
@@ -292,7 +309,9 @@ config = {
     'proxyport': int(proxyport),
     'nick': args.nick,
     'user': args.user,
-    'real': args.real
+    'real': args.real,
+    'outputdir': args.output,
+    'throttleLevel': args.throttle
 }
 
 bot = IRCBot(config)
@@ -306,6 +325,6 @@ except:
 results = {'channels': bot.channels, 'userList': bot.userList,
     'users': bot.users, 'links': bot.links, 'linkList': bot.linkList}
 
-with open(config['server'] + ".json", "a") as myfile:
+with open(args.output + "/" + config['server'] + ".json", "a") as myfile:
     myfile.write(dumps(results, sort_keys=True, indent=4,
         separators=(',', ': ')))

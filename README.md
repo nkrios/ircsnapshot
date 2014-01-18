@@ -3,7 +3,7 @@ ircsnapshot
 
 Tool to gather information from IRC servers
 
-<pre>$ python ircsnapshot.py -h
+<pre>$ python ircsnapshot.py
 usage: ircsnapshot.py [-h] [options] server[:port]
 
 IRCSnapshot v0.6
@@ -18,6 +18,9 @@ Options:
   -p --password PASS            Server password
   -c --channels #chan1,#chan2   Additional channels to check
   --proxy SERVER[:PORT]         SOCKS4 proxy to connect through
+  -o --output Directory         Output directory (default .)
+  -t --throttle 1.0             Seconds to sleep before sending messages (default 0.25)
+                                Random values between 0 and this value are chosen each time
 
   -h --help                     Print this message
 
@@ -44,14 +47,17 @@ SockiPy
 
 Support Scripts
 ===============
-<pre>
-$ python to.gexf.py
-usage: to.gexf.py [-h] [options] input
+<pre>$ python to.gexf.py
+usage: to.gexf.py [-h] [options] conversion input
 
 to.gexf v0.1
 Convert IRCSnapShot output to Gephi compatible format
 Gexf output is to STDOUT
 By Brian Wallace (@botnet_hunter)
+
+Conversion Types:
+  UserToLink                    Show relation between users and links
+  UserToChannel                 Show relation between users and channels
 
 GPS:
   -m MaxMind Location           Location of Maxmind database files (default .)

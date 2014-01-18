@@ -10,12 +10,16 @@ version = "0.1"
 
 def PrintHelp():
     global version
-    print("usage: to.gexf.py [-h] [options] input")
+    print("usage: to.gexf.py [-h] [options] conversion input")
     print("")
     print(("to.gexf v" + version))
     print("Convert IRCSnapShot output to Gephi compatible format")
     print("Gexf output is to STDOUT")
     print("By Brian Wallace (@botnet_hunter)")
+    print("")
+    print("Conversion Types:")
+    print("  UserToLink                    Show relation between users and links")
+    print("  UserToChannel                 Show relation between users and channels")
     print("")
     print("GPS:")
     print("  -m MaxMind Location           Location of Maxmind database files (default .)")
@@ -120,6 +124,8 @@ def GetLocationInformation(address):
 '''
 
 parser = ArgumentParser(add_help=False)
+parser.add_argument('conversion', metavar='conversion', type=str, nargs='?',
+    default=None)
 parser.add_argument('input', metavar='input', type=str, nargs='?',
     default=None)
 parser.add_argument('-m', metavar='maxmind', type=str, nargs='?',
@@ -129,7 +135,7 @@ parser.add_argument('-h', '--help', default=False, required=False,
 
 args = parser.parse_args()
 
-if args.help or args.input is None:
+if args.help or args.input is None or args.conversion is None or (args.conversion != "UserToLink" and args.conversion != "UserToChannel"):
     PrintHelp()
     exit()
 
@@ -144,57 +150,96 @@ with open(args.input, 'r') as content_file:
 linkList = in_results['linkList']
 links = in_results['links']
 users = in_results['users']
+channels = in_results['channels']
+channelList = in_results['userList']
 
 
 highestnode = -1
 nodes = {}
 connections = []
 
-for link in links:
-    highestnode += 1
-    node = {"id": highestnode, "label": link['mask'], "mod": 0}
-    ip = socket.gethostbyname(link['mask'])
-    loc = GetLocationInformation(ip)
-    node['label'] += " (" + ip + ")"
-    node['lat'] = loc['latitude']
-    node['lng'] = loc['longitude']
-    nodes[link['mask']] = node
+if args.conversion == "UserToLink":
+    for link in links:
+        highestnode += 1
+        node = {"id": highestnode, "label": link['mask'], "mod": 0}
+        try:
+            node['ip'] = socket.gethostbyname(link['mask'])
+            if node['ip'] == '92.242.140.2':
+                node['ip'] = "0.0.0.0"
+        except:
+            node['ip'] = "0.0.0.0"
+        if node['ip'] != "0.0.0.0":
+            loc = GetLocationInformation(node['ip'])
+            node['label'] += " (" + node['ip'] + ")"
+            if loc:
+                node['lat'] = loc['latitude']
+                node['lng'] = loc['longitude']
+        nodes[link['mask']] = node
 
-for name, node in list(nodes.items()):
-    connections.append([node['id'], nodes[link['server']]['id']])
+    for name, node in list(nodes.items()):
+        connections.append([node['id'], nodes[link['server']]['id']])
 
-for link, userList in list(linkList.items()):
-    for user in userList:
-        if user in users:
-            for line in users[user]:
-                if line.count(" 311 ") > 0:
-                    highestnode += 1
-                    t = line[string.find(line, " 311 ") + 5:]
-                    node = {"id": highestnode, "label": str(user) + " (" +
-                    t.split(' ')[3] + ")",
-                    "host": t.split(' ')[3], "mod": 1}
-                    try:
-                        node['ip'] = socket.gethostbyname(node['host'])
-                        if node['ip'] == '92.242.140.2':
+    for link, userList in list(linkList.items()):
+        for user in userList:
+            if user in users:
+                for line in users[user]:
+                    if line.count(" 311 ") > 0:
+                        highestnode += 1
+                        t = line[string.find(line, " 311 ") + 5:]
+                        node = {"id": highestnode, "label": str(user) + " (" +
+                        t.split(' ')[3] + ")",
+                        "host": t.split(' ')[3], "mod": 1}
+                        try:
+                            node['ip'] = socket.gethostbyname(node['host'])
+                            if node['ip'] == '92.242.140.2':
+                                node['ip'] = "0.0.0.0"
+                        except:
                             node['ip'] = "0.0.0.0"
-                    except:
-                        node['ip'] = "0.0.0.0"
-                    if node['ip'] != "0.0.0.0":
-                        loc = GetLocationInformation(node['ip'])
-                        if loc:
-                            node['lat'] = loc['latitude']
-                            node['lng'] = loc['longitude']
-                    nodes[user] = node
-                if line.count(" 312 ") > 0:
-                    t = line[string.find(line, " 312 ") + 5:]
-                    connections.append([nodes[user]['id'],
-                        nodes[t.split(' ')[2]]['id']])
+                        if node['ip'] != "0.0.0.0":
+                            loc = GetLocationInformation(node['ip'])
+                            if loc:
+                                node['lat'] = loc['latitude']
+                                node['lng'] = loc['longitude']
+                        nodes[user] = node
+                    if line.count(" 312 ") > 0:
+                        t = line[string.find(line, " 312 ") + 5:]
+                        connections.append([nodes[user]['id'],
+                            nodes[t.split(' ')[2]]['id']])
+elif args.conversion == "UserToChannel":
+    for channel, userList in list(channelList.items()):
+        highestnode += 1
+        if channel not in nodes:
+            i = {"id": highestnode, "label": channel, "mod": 0}
+            nodes[channel] = i
+        for user in userList:
+            if user in users:
+                if user not in nodes:
+                    for line in users[user]:
+                        if line.count(" 311 ") > 0:
+                            highestnode += 1
+                            t = line[string.find(line, " 311 ") + 5:]
+                            node = {"id": highestnode, "label": str(user) + " (" +
+                            t.split(' ')[3] + ")",
+                            "host": t.split(' ')[3], "mod": 1}
+                            try:
+                                node['ip'] = socket.gethostbyname(node['host'])
+                                if node['ip'] == '92.242.140.2':
+                                    node['ip'] = "0.0.0.0"
+                            except:
+                                node['ip'] = "0.0.0.0"
+                            if node['ip'] != "0.0.0.0":
+                                loc = GetLocationInformation(node['ip'])
+                                if loc:
+                                    node['lat'] = loc['latitude']
+                                    node['lng'] = loc['longitude']
+                            nodes[user] = node
+                connections.append([nodes[user]['id'], nodes[channel]['id']])
 
 print('<?xml version="1.0" encoding="UTF-8"?>')
 print('<gexf xmlns="http://www.gexf.net/1.2draft" version="1.2">')
 print('    <meta lastmodifieddate="2009-03-20">')
 print(('        <creator>' + "bwall" + '</creator>'))
-print('        <description>A hello world! file</description>')
+print('        <description></description>')
 print('    </meta>')
 print('    <graph mode="static" defaultedgetype="directed">')
 print('    <attributes class="node" mode="static">')
@@ -210,8 +255,8 @@ for name, node in list(nodes.items()):
         print('                <attvalues>')
         print(('                    <attvalue for="modularity_class" value="' +
             str(node['mod']) + '"></attvalue>'))
-        print('          <attvalue for="lat" value="' + str(node['lat']) + '"></attvalue>')
-        print('          <attvalue for="lng" value="' + str(node['lng']) + '"></attvalue>')
+        print('                     <attvalue for="lat" value="' + str(node['lat']) + '"></attvalue>')
+        print('                     <attvalue for="lng" value="' + str(node['lng']) + '"></attvalue>')
         print('                </attvalues>')
         print('            </node>')
     else:
@@ -220,8 +265,8 @@ for name, node in list(nodes.items()):
         print('                <attvalues>')
         print(('                    <attvalue for="modularity_class" value="' +
             str(node['mod']) + '"></attvalue>'))
-        print('          <attvalue for="lat" value="0"></attvalue>')
-        print('          <attvalue for="lng" value="0"></attvalue>')
+        print('                     <attvalue for="lat" value="0"></attvalue>')
+        print('                     <attvalue for="lng" value="0"></attvalue>')
         print('                </attvalues>')
         print('            </node>')
 print('        </nodes>')
