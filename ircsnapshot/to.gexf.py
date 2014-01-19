@@ -49,6 +49,7 @@ def LoadBlocks(path):
             if count < 3:
                 continue
             blocks.append(ParseCSVLine(line))
+    blocks = sorted(blocks, key=lambda it: int(it[0]))
 
 
 def GetLocationID(address):
@@ -203,6 +204,22 @@ if args.conversion == "UserToLink":
                         nodes[user] = node
                     if line.count(" 312 ") > 0:
                         t = line[string.find(line, " 312 ") + 5:]
+                        if t.split(' ')[2] not in nodes:
+                            highestnode += 1
+                            node = {"id": highestnode, "label": t.split(' ')[2], "mod": 0}
+                            try:
+                                node['ip'] = socket.gethostbyname(node['label'])
+                                if node['ip'] == '92.242.140.2':
+                                    node['ip'] = "0.0.0.0"
+                            except:
+                                node['ip'] = "0.0.0.0"
+                            if node['ip'] != "0.0.0.0":
+                                loc = GetLocationInformation(node['ip'])
+                                node['label'] += " (" + node['ip'] + ")"
+                                if loc:
+                                    node['lat'] = loc['latitude']
+                                    node['lng'] = loc['longitude']
+                            nodes[t.split(' ')[2]] = node
                         connections.append([nodes[user]['id'],
                             nodes[t.split(' ')[2]]['id']])
 elif args.conversion == "UserToChannel":

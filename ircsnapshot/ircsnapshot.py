@@ -212,7 +212,7 @@ class IRCBot:
 
                         # join next
 
-                        if self.listDone == True:
+                        if self.listDone is True:
                             if len(self.channelsToScan) > 0:
                                 self.join(self.channelsToScan[0]["name"])
                                 del self.channelsToScan[0]
