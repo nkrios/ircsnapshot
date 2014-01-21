@@ -77,6 +77,7 @@ Proxy support currently is just for SOCKS4a.  This is compatible with Tor.  I wi
 
 To Do
 =====
+ * Split to two threads (command thread and protocol thread)
  * Stricter parsing of whois data
  * More scripts to parse data post scan
  * to.gexf.py to include a UserToGPS to create bot heat maps
