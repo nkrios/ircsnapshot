@@ -11,8 +11,10 @@ from sys import exit, exc_info
 import socks
 import os
 from random import random
+import logging
+import time
 
-version = "0.7"
+version = "0.8"
 
 
 def PrintHelp():
@@ -64,6 +66,8 @@ class IRCBot:
 
         self.listDone = False
 
+        self.hasListed = False
+
         self.whoisDataCodes = ["307", "308", "309", "310", "311", "312", "313",
             "316", "317", "319", "320", "330", "335", "338", "378", "379",
             "615", "616", "617", "671", "689", "690", ]
@@ -79,11 +83,7 @@ class IRCBot:
             message = message.encode("utf-8")
         except:
             message = message
-        with open(self.config['outputdir'] + "/" + self.config['server'] +
-                ".log.txt", "a") as myfile:
-            myfile.write("[" + str(datetime.utcnow()) + "] " +
-                message + "\r\n")
-        print("[" + str(datetime.utcnow()) + "] " + message)
+        logging.info(message)
 
     def send(self, message, overrideThrottle=False):
         if overrideThrottle is False:
@@ -113,7 +113,6 @@ class IRCBot:
         self.send("LIST")
 
     def start(self):
-        # todo - DNS resolution through proxy
         self.server = self.config['server']
         self.port = int(self.config['port'])
         if self.config['proxyhost'] is None:
@@ -143,11 +142,152 @@ class IRCBot:
         self.set_nick(self.nick)
         self.main()
 
+    # Start Parsers
+    def parse_ping(self, line):
+        if line[:6] == "PING :":
+            self.send("PONG :" + line[6:], True)
+            if len(self.channelsToScan) > 0:
+                self.join(self.channelsToScan[0]["name"])
+                del self.channelsToScan[0]
+            return True
+        return False
+
+    def parse_nick_in_use(self, line, cmd):
+        if cmd[1] == "433":
+            self.set_nick(self.nick)
+            return True
+        return False
+
+    def parse_end_of_motd(self, line, cmd):
+        if cmd[1] == "422" or cmd[1] == "376":
+            # can start scanning
+            if self.hasListed is False:
+                self.hasListed = True
+                self.list()
+                self.send("LINKS")
+                return True
+        return False
+
+    def parse_list_entry(self, line, cmd):
+        if cmd[1] == "322":
+            chanDesc = {"name": unicode(cmd[3], errors='ignore'), "usercount": cmd[4], "topic": unicode(line[line.find(":", 1) + 1:], errors='ignore')}
+            self.channels[chanDesc['name']] = chanDesc
+            if chanDesc['name'] != "*":
+                self.channelsToScan.append(chanDesc)
+            return True
+        return False
+
+    def parse_link_entry(self, line, cmd):
+        if cmd[1] == "364":
+            linkDesc = {"mask": unicode(cmd[3], errors='ignore'), "server": unicode(cmd[4], errors='ignore'), "hopcount": unicode(cmd[5][1:], errors='ignore'), "info": line[line.find(' ', line.find(":", 1)) + 1:]}
+            self.links.append(linkDesc)
+            return True
+        return False
+
+    def parse_list_end(self, line, cmd):
+        if cmd[1] == "323":
+            if self.config['channelstocheck'] is not None:
+                # Add all mandatory join channels
+                for chan in self.config['channelstocheck']:
+                    exists = False
+                    for c in self.channelsToScan:
+                        if c['name'] == chan:
+                            exists = True
+                            break
+                    if not exists:
+                        self.channelsToScan.append({"name": unicode(chan, errors='ignore'), "usercount": '?', "topic": unicode("undefined", errors='ignore')})
+            if len(self.channelsToScan) > 0:
+                self.join(self.channelsToScan[0]["name"])
+                del self.channelsToScan[0]
+            self.listDone = True
+            return True
+        return False
+
+    def parse_names_reply(self, line, cmd):
+        if cmd[1] == "353":
+            if cmd[4] not in self.userList:
+                self.userList[cmd[4]] = []
+            for nick in string.split(string.split(line, ":")[2],
+                " "):
+                if nick == "" or nick == " ":
+                    continue
+                if nick[0] == "@" or nick[0] == "~" or nick[0] == "%" or nick[0] == "+" or nick[0] == "&":
+                    nick = nick[1:]
+                if nick not in self.userList[cmd[4]] and nick != self.nick:
+                    self.userList[cmd[4]].append(unicode(nick, errors='ignore'))
+                    if nick not in self.usersToScan and nick not in self.users:
+                        self.usersToScan.append(nick)
+            if self.usersToScan.count == 0:
+                self.usersToScan.append(self.nick)
+            return True
+        return False
+
+    def parse_join_codes(self, line, cmd):
+        if cmd[1] in self.channelJoinCodes:
+            self.part(cmd[3])
+
+            # join next
+
+            if self.listDone is True:
+                if len(self.channelsToScan) > 0:
+                    self.join(self.channelsToScan[0]["name"])
+                    del self.channelsToScan[0]
+                else:
+                    self.log("Done scanning channels")
+                    if len(self.usersToScan) > 0:
+                        self.whois(self.usersToScan[0])
+                        del self.usersToScan[0]
+                    else:
+                        self.send("QUIT :")
+            return True
+        return False
+
+    def parse_whois_codes(self, line, cmd):
+        if cmd[1] in self.whoisDataCodes:
+            if cmd[3] != self.nick:
+                if cmd[3] not in self.users:
+                    self.users[cmd[3]] = []
+                if cmd[3] not in self.userDetails:
+                    self.userDetails[cmd[3]] = {'nick': '', 'user': '', 'host': '', 'real': '', 'identified': False, 'oper': False}
+                if cmd[1] == "311":
+                    self.userDetails[cmd[3]]['nick'] = unicode(cmd[3], errors='ignore')
+                    self.userDetails[cmd[3]]['user'] = unicode(cmd[4], errors='ignore')
+                    self.userDetails[cmd[3]]['host'] = unicode(cmd[5], errors='ignore')
+                    self.userDetails[cmd[3]]['real'] = unicode(line[line.find(':', 1) + 1:])
+                if cmd[1] == "317":
+                    self.userDetails[cmd[3]]['identified'] = True
+                if cmd[1] == "313":
+                    self.userDetails[cmd[3]]['oper'] = True
+                if cmd[1] == "312" and len(cmd) > 4:
+                    #contains server location
+                    if cmd[4] not in self.linkList:
+                        self.linkList[cmd[4]] = []
+                    if cmd[3] not in self.linkList[cmd[4]]:
+                        self.linkList[cmd[4]].append(cmd[3])
+                if unicode(line, errors='ignore') not in self.users[cmd[3]]:
+                    self.users[cmd[3]].append(unicode(line, errors='ignore'))
+            return True
+        return False
+
+    def parse_whois_end(self, line, cmd):
+        if cmd[1] == "318":
+            if self.listDone == True:
+                if len(self.usersToScan) > 0:
+                    self.whois(self.usersToScan[0])
+                    del self.usersToScan[0]
+                else:
+                    self.send("QUIT :")
+                    return True
+        return False
+    # End Parsers
+
+
     def main(self):
         data = ""
-        hasListed = False
+        self.hasListed = False
         f = self.sock.makefile()
         while True:
+            data = ""
             data = f.readline()
             if not data:
                 self.log("Disconnected")
@@ -155,106 +295,22 @@ class IRCBot:
             for line in [data]:
                 line = line[:-2]
                 self.log(line)
-                if line[:6] == "PING :":
-                    self.send("PONG :" + line[6:], True)
-                    if len(self.channelsToScan) > 0:
-                        self.join(self.channelsToScan[0]["name"])
-                        del self.channelsToScan[0]
+
+                # handle pings
+                self.parse_ping(line)
+
                 cmd = string.split(line, " ")
                 if len(cmd) > 1:
-                    if cmd[1] == "433":
-                        self.set_nick(self.nick)
-                    if cmd[1] == "422" or cmd[1] == "376":
-                        # can start scanning
-                        if hasListed is False:
-                            hasListed = True
-                            self.list()
-                            self.send("LINKS")
-                    if cmd[1] == "322":
-                        chanDesc = {"name": unicode(cmd[3], errors='ignore'), "usercount": cmd[4], "topic": unicode(line[line.find(":", 1) + 1:], errors='ignore')}
-                        self.channels[chanDesc['name']] = chanDesc
-                        if chanDesc['name'] != "*":
-                            self.channelsToScan.append(chanDesc)
-                    if cmd[1] == "364":
-                        linkDesc = {"mask": unicode(cmd[3], errors='ignore'), "server": unicode(cmd[4], errors='ignore'), "hopcount": unicode(cmd[5][1:], errors='ignore'), "info": line[line.find(' ', line.find(":", 1)) + 1:]}
-                        self.links.append(linkDesc)
-                    if cmd[1] == "323":
-                        if self.config['channelstocheck'] is not None:
-                            # Add all mandatory join channels
-                            for chan in self.config['channelstocheck']:
-                                exists = False
-                                for c in self.channelsToScan:
-                                    if c['name'] == chan:
-                                        exists = True
-                                        break
-                                if not exists:
-                                    self.channelsToScan.append({"name": unicode(chan, errors='ignore'), "usercount": '?', "topic": unicode("undefined", errors='ignore')})
-                        if len(self.channelsToScan) > 0:
-                            self.join(self.channelsToScan[0]["name"])
-                            del self.channelsToScan[0]
-                        self.listDone = True
-                    if cmd[1] == "353":
-                        if cmd[4] not in self.userList:
-                            self.userList[cmd[4]] = []
-                        for nick in string.split(string.split(line, ":")[2],
-                            " "):
-                            if nick == "" or nick == " ":
-                                continue
-                            if nick[0] == "@" or nick[0] == "~" or nick[0] == "%" or nick[0] == "+" or nick[0] == "&":
-                                nick = nick[1:]
-                            if nick not in self.userList[cmd[4]] and nick != self.nick:
-                                self.userList[cmd[4]].append(unicode(nick, errors='ignore'))
-                                if nick not in self.usersToScan and nick not in self.users:
-                                    self.usersToScan.append(nick)
-                        if self.usersToScan.count == 0:
-                            self.usersToScan.append(self.nick)
-                    if cmd[1] in self.channelJoinCodes:
-                        self.part(cmd[3])
-
-                        # join next
-
-                        if self.listDone is True:
-                            if len(self.channelsToScan) > 0:
-                                self.join(self.channelsToScan[0]["name"])
-                                del self.channelsToScan[0]
-                            else:
-                                self.log("Done scanning channels")
-                                if len(self.usersToScan) > 0:
-                                    self.whois(self.usersToScan[0])
-                                    del self.usersToScan[0]
-                                else:
-                                    self.send("QUIT :")
-                    if cmd[1] in self.whoisDataCodes:
-                        if cmd[3] != self.nick:
-                            if cmd[3] not in self.users:
-                                self.users[cmd[3]] = []
-                            if cmd[3] not in self.userDetails:
-                                self.userDetails[cmd[3]] = {'nick': '', 'user': '', 'host': '', 'real': '', 'identified': False, 'oper': False}
-                            if cmd[1] == "311":
-                                self.userDetails[cmd[3]]['nick'] = unicode(cmd[3], errors='ignore')
-                                self.userDetails[cmd[3]]['user'] = unicode(cmd[4], errors='ignore')
-                                self.userDetails[cmd[3]]['host'] = unicode(cmd[5], errors='ignore')
-                                self.userDetails[cmd[3]]['real'] = unicode(line[line.find(':', 1) + 1:])
-                            if cmd[1] == "317":
-                                self.userDetails[cmd[3]]['identified'] = True
-                            if cmd[1] == "313":
-                                self.userDetails[cmd[3]]['oper'] = True
-                            if cmd[1] == "312" and len(cmd) > 4:
-                                #contains server location
-                                if cmd[4] not in self.linkList:
-                                    self.linkList[cmd[4]] = []
-                                if cmd[3] not in self.linkList[cmd[4]]:
-                                    self.linkList[cmd[4]].append(cmd[3])
-                            if unicode(line, errors='ignore') not in self.users[cmd[3]]:
-                                self.users[cmd[3]].append(unicode(line, errors='ignore'))
-                    if cmd[1] == "318":
-                        if self.listDone == True:
-                            if len(self.usersToScan) > 0:
-                                self.whois(self.usersToScan[0])
-                                del self.usersToScan[0]
-                            else:
-                                self.send("QUIT :")
-                                break
+                    self.parse_nick_in_use(line, cmd)
+                    self.parse_end_of_motd(line, cmd)
+                    self.parse_list_entry(line, cmd)
+                    self.parse_link_entry(line, cmd)
+                    self.parse_list_end(line, cmd)
+                    self.parse_names_reply(line, cmd)
+                    self.parse_join_codes(line, cmd)
+                    self.parse_whois_codes(line, cmd)
+                    if self.parse_whois_end(line, cmd):
+                        break
 
 
 parser = ArgumentParser(add_help=False)
@@ -310,6 +366,20 @@ if proxyhost is not None:
 
 if not os.path.exists(args.output):
     os.makedirs(args.output)
+
+logFormatter = logging.Formatter("[%(asctime)s] %(message)s")
+logFormatter.converter = time.gmtime
+rootLogger = logging.getLogger()
+
+fileHandler = logging.FileHandler("{0}/{1}.log".format(args.output, server))
+fileHandler.setFormatter(logFormatter)
+rootLogger.addHandler(fileHandler)
+
+consoleHandler = logging.StreamHandler()
+consoleHandler.setFormatter(logFormatter)
+rootLogger.addHandler(consoleHandler)
+rootLogger.setLevel(0)
+logging.info("Logger initiated")
 
 config = {
     'server': server,
