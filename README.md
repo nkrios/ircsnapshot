@@ -74,3 +74,13 @@ Notes
 Please report any issues you encounter.  This tool has proven to be useful in a few cases so I decided it would be good to publish.
 
 Proxy support currently is just for SOCKS4a.  This is compatible with Tor.  I will add more proxy support in the future.  DNS queries will be sent through the proxy.
+
+To Do
+=====
+ * Split to two threads (command thread and protocol thread)
+ * Stricter parsing of whois data
+ * More scripts to parse data post scan
+ * to.gexf.py to include a UserToGPS to create bot heat maps
+ * More fail over states in to.gexf.py
+ * Support multiple network inputs to to.gexf.py
+ * Merge Maxmind databases as included file (add licensing)
