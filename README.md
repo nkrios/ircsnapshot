@@ -6,7 +6,7 @@ Tool to gather information from IRC servers
 <pre>$ python ircsnapshot.py
 usage: ircsnapshot.py [-h] [options] server[:port]
 
-IRCSnapshot v0.6
+IRCSnapshot v0.7
 Gathering information from IRC servers
 By Brian Wallace (@botnet_hunter)
 
@@ -37,7 +37,8 @@ server.json - JSON encoded list of links visible to connecting user
     'linkList': {}, // Dictionary of links and users connected to them
     'channels': {}, // Dictionary of channels and their metadata
     'userList': {}, // Dictionary of channels and users in them
-    'users': {} // Dictionary of users and their whois data
+    'users': {}, // Dictionary of users and their whois data
+    'userDetails': {} // Dictionary of parsed details from user's whois
 }
 </pre>
 
