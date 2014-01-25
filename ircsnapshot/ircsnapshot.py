@@ -12,7 +12,7 @@ import socks
 import os
 from random import random
 
-version = "0.6"
+version = "0.7"
 
 
 def PrintHelp():
@@ -56,6 +56,7 @@ class IRCBot:
         self.users = {}
         self.userList = {}
         self.linkList = {}
+        self.userDetails = {}
 
         self.channelsToScan = []
         self.usersToScan = []
@@ -227,6 +228,17 @@ class IRCBot:
                         if cmd[3] != self.nick:
                             if cmd[3] not in self.users:
                                 self.users[cmd[3]] = []
+                            if cmd[3] not in self.userDetails:
+                                self.userDetails[cmd[3]] = {'nick': '', 'user': '', 'host': '', 'real': '', 'identified': False, 'oper': False}
+                            if cmd[1] == "311":
+                                self.userDetails[cmd[3]]['nick'] = unicode(cmd[3], errors='ignore')
+                                self.userDetails[cmd[3]]['user'] = unicode(cmd[4], errors='ignore')
+                                self.userDetails[cmd[3]]['host'] = unicode(cmd[5], errors='ignore')
+                                self.userDetails[cmd[3]]['real'] = unicode(line[line.find(':', 1) + 1:])
+                            if cmd[1] == "317":
+                                self.userDetails[cmd[3]]['identified'] = True
+                            if cmd[1] == "313":
+                                self.userDetails[cmd[3]]['oper'] = True
                             if cmd[1] == "312" and len(cmd) > 4:
                                 #contains server location
                                 if cmd[4] not in self.linkList:
@@ -323,7 +335,8 @@ except:
     print((exc_info()))
 
 results = {'channels': bot.channels, 'userList': bot.userList,
-    'users': bot.users, 'links': bot.links, 'linkList': bot.linkList}
+    'users': bot.users, 'links': bot.links, 'linkList': bot.linkList,
+    'userDetails': bot.userDetails}
 
 with open(args.output + "/" + config['server'] + ".json", "a") as myfile:
     myfile.write(dumps(results, sort_keys=True, indent=4,
