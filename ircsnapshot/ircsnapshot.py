@@ -187,12 +187,18 @@ class IrcBotControl:
     def parse_end_of_motd(self, line, cmd):
         if cmd[1] == "422" or cmd[1] == "376":
             # can start scanning
-            if self.hasListed is False:
-                self.hasListed = True
-                self.bot.list()
-                self.bot.send("LINKS")
-                return True
+            if self.config['listDelay'] is None:
+                self.start_scanning()
+            else:
+                threading.Timer(float(self.config['listDelay']), self.start_scanning).start()
+            return True
         return False
+
+    def start_scanning(self):
+        if self.hasListed is False:
+            self.hasListed = True
+            self.bot.list()
+            self.bot.send("LINKS")
 
     def parse_list_entry(self, line, cmd):
         if cmd[1] == "322":
@@ -408,6 +414,7 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--channels', metavar='channels', type=str, nargs='?', default=None)
     parser.add_argument('-o', '--output', metavar='output', type=str, nargs='?', default='.')
     parser.add_argument('-t', '--throttle', metavar='throttle', type=float, nargs='?', default='1')
+    parser.add_argument('-l', '--listdelay', metavar='listdelay', type=float, nargs='?', default=None)
 
     parser.add_argument('-n', '--nick', metavar='nick', type=str, nargs='?', default=id_generator(10))
     parser.add_argument('-r', '--real', metavar='real', type=str, nargs='?', default=id_generator(10))
@@ -471,7 +478,8 @@ if __name__ == "__main__":
         'user': args.user,
         'real': args.real,
         'outputdir': args.output,
-        'throttleLevel': args.throttle
+        'throttleLevel': args.throttle,
+        'listDelay': args.listdelay
     }
 
     bot = IrcBotControl(config)
