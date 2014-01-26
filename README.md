@@ -6,7 +6,7 @@ Tool to gather information from IRC servers
 <pre>$ python ircsnapshot.py
 usage: ircsnapshot.py [-h] [options] server[:port]
 
-IRCSnapshot v0.8
+IRCSnapshot v0.9
 Gathering information from IRC servers
 By Brian Wallace (@botnet_hunter)
 
@@ -19,8 +19,7 @@ Options:
   -c --channels #chan1,#chan2   Additional channels to check
   --proxy SERVER[:PORT]         SOCKS4 proxy to connect through
   -o --output Directory         Output directory (default .)
-  -t --throttle 1.0             Seconds to sleep before sending messages (default 0.25)
-                                Random values between 0 and this value are chosen each time
+  -t --throttle 1.0             Seconds to sleep before sending commands (default 1)
 
   -h --help                     Print this message
 
