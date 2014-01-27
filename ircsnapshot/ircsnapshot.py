@@ -122,8 +122,8 @@ class IrcBotControl:
             self.queue_lock.release()
             return
         if len(self.to_process_queue) > 0:
-            item = self.to_process_queue[0]
-            del self.to_process_queue[0]
+            item = choice(self.to_process_queue)
+            self.to_process_queue.remove(item)
             if item.verb == "join":
                 self.is_processing.append(item)
                 if item.other is not None:
