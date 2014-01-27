@@ -199,6 +199,7 @@ class IrcBotControl:
             self.hasListed = True
             self.bot.list()
             self.bot.send("LINKS")
+            self.bot.send("NAMES")
 
     def parse_list_entry(self, line, cmd):
         if cmd[1] == "322":
