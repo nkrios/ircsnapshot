@@ -78,6 +78,8 @@ Proxy support currently is just for SOCKS4a.  This is compatible with Tor.  I wi
 To Do
 =====
  * Session management (restoring after being banned, crashes, etc)
+ * Set limit of channels to resolve per connection
+ * Multiple connections with jobs across sesssions
  * More scripts to parse data post scan
  * to.gexf.py to include a UserToGPS to create bot heat maps
  * More fail over states in to.gexf.py
