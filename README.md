@@ -80,6 +80,7 @@ To Do
  * Session management (restoring after being banned, crashes, etc)
  * Set limit of channels to resolve per connection
  * Multiple connections with jobs across sesssions
+ * Add optional CTCP queries
  * More scripts to parse data post scan
  * to.gexf.py to include a UserToGPS to create bot heat maps
  * More fail over states in to.gexf.py
