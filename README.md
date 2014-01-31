@@ -51,7 +51,7 @@ Output from to.gexf.py can be loaded in Gephi.  If the IP information is parsabl
 
 Dependencies
 ============
-SockiPy
+SocksiPy
 
 Support Scripts
 ===============
