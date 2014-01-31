@@ -15,7 +15,7 @@ import threading
 version = "0.9"
 
 
-def PrintHelp():
+def print_help():
     global version
     print("usage: ircsnapshot.py [-h] [options] server[:port]")
     print("")
@@ -39,9 +39,9 @@ def PrintHelp():
     print("")
 
 
-def id_generator(size=6,
-    chars=string.ascii_uppercase + string.ascii_lowercase):
+def id_generator(size=6, chars=string.ascii_uppercase + string.ascii_lowercase):
     return ''.join(choice(chars) for x in range(size))
+
 
 class QueuedTask(object):
     def __init__(self, verb, data, other=None):
@@ -82,8 +82,7 @@ class IrcBotControl:
         self.whoisDataCodes = ["307", "308", "309", "310", "311", "312", "313",
             "316", "317", "319", "320", "330", "335", "338", "378", "379",
             "615", "616", "617", "671", "689", "690", ]
-        self.channelJoinCodes = {"366", "470", "471", "473", "474", "475",
-            "476", "477", "479", "519", "520"}
+        self.channelJoinCodes = {"366", "470", "471", "473", "474", "475", "476", "477", "479", "519", "520"}
 
         self.bot = IRCBot(self.config, self)
 
@@ -308,6 +307,7 @@ class IRCBot:
         self.parser = parser
 
         self.send_lock = threading.Lock()
+        self.sock = None
 
     def log(self, message):
         try:
@@ -359,21 +359,18 @@ class IRCBot:
         else:
             if self.config['ssl'] is True:
                 temp_socket = socks.socksocket()
-                temp_socket.setproxy(socks.PROXY_TYPE_SOCKS4,
-                    self.config['proxyhost'], self.config['proxyport'], True)
+                temp_socket.setproxy(socks.PROXY_TYPE_SOCKS4, self.config['proxyhost'], self.config['proxyport'], True)
                 self.sock = wrap_socket(temp_socket)
             else:
                 self.sock = socks.socksocket()
-                self.sock.setproxy(socks.PROXY_TYPE_SOCKS4,
-                    self.config['proxyhost'], self.config['proxyport'], True)
+                self.sock.setproxy(socks.PROXY_TYPE_SOCKS4, self.config['proxyhost'], self.config['proxyport'], True)
         self.sock.connect((self.server, self.port))
 
         #send pass
         if self.config["pass"] is not None:
             self.send("PASS " + self.config["pass"], True)
 
-        self.send("USER " + self.user + " 127.0.0.1 " + self.server + " :" +
-            self.real, True)
+        self.send("USER " + self.user + " 127.0.0.1 " + self.server + " :" + self.real, True)
         self.set_nick(self.nick)
         self.main()
 
@@ -427,7 +424,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.help or args.server is None:
-        PrintHelp()
+        print_help()
         exit()
 
     server = args.server
@@ -492,9 +489,8 @@ if __name__ == "__main__":
         print((exc_info()))
 
     results = {'channels': bot.channels, 'userList': bot.userList,
-        'users': bot.users, 'links': bot.links, 'linkList': bot.linkList,
-        'userDetails': bot.userDetails}
+               'users': bot.users, 'links': bot.links, 'linkList': bot.linkList,
+               'userDetails': bot.userDetails}
 
     with open(args.output + "/" + config['server'] + ".json", "a") as myfile:
-        myfile.write(dumps(results, sort_keys=True, indent=4,
-            separators=(',', ': ')))
+        myfile.write(dumps(results, sort_keys=True, indent=4, separators=(',', ': ')))
