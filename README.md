@@ -41,6 +41,10 @@ server.json - JSON encoded list of links visible to connecting user
 }
 </pre>
 
+Output from to.gexf.py can be loaded in Gephi.  If the IP information is parsable, the output will include coordinates for Geolocation plugins for Gephi to plot to create an image like the following.
+
+![Sample botnet mapped](https://raw2.github.com/bwall/ircsnapshot/master/ircsnapshot/example.png)
+
 Dependencies
 ============
 SockiPy
