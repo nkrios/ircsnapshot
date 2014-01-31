@@ -41,9 +41,17 @@ server.json - JSON encoded list of links visible to connecting user
 }
 </pre>
 
+Output to.gexf.py
+=================
+Output from to.gexf.py can be loaded in Gephi.  If the IP information is parsable, the output will include coordinates for Geolocation plugins for Gephi to plot to create an image like the following.
+
+![Sample 1 botnet mapped](https://raw2.github.com/bwall/ircsnapshot/master/ircsnapshot/example.png)
+![Sample 2 botnet mapped](http://openbwall.com/static/images/fi/allnet.link.png)
+![Sample 3 botnet graphed](http://openbwall.com/static/images/fi/irc.byroenet.com.UserToChannel.png)
+
 Dependencies
 ============
-SockiPy
+SocksiPy
 
 Support Scripts
 ===============
@@ -77,8 +85,10 @@ Proxy support currently is just for SOCKS4a.  This is compatible with Tor.  I wi
 
 To Do
 =====
- * Split to two threads (command thread and protocol thread)
- * Stricter parsing of whois data
+ * Session management (restoring after being banned, crashes, etc)
+ * Set limit of channels to resolve per connection
+ * Multiple connections with jobs across sesssions
+ * Add optional CTCP queries
  * More scripts to parse data post scan
  * to.gexf.py to include a UserToGPS to create bot heat maps
  * More fail over states in to.gexf.py
