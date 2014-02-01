@@ -4,7 +4,7 @@ ircsnapshot
 Tool to gather information from IRC servers
 
 <pre>$ python ircsnapshot.py
-usage: ircsnapshot.py [-h] [options] server[:port]
+usage: ircsnapshot.py [-h] [options] server [port]
 
 IRCSnapshot v0.9
 Gathering information from IRC servers

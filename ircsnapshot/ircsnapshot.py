@@ -17,7 +17,7 @@ version = "0.9"
 
 def print_help():
     global version
-    print("usage: ircsnapshot.py [-h] [options] server[:port]")
+    print("usage: ircsnapshot.py [-h] [options] server [port]")
     print("")
     print(("IRCSnapshot v" + version))
     print("Gathering information from IRC servers")
@@ -272,7 +272,7 @@ class IrcBotControl:
                     self.userDetails[cmd[3]]['user'] = unicode(cmd[4], errors='ignore')
                     self.userDetails[cmd[3]]['host'] = unicode(cmd[5], errors='ignore')
                     self.userDetails[cmd[3]]['real'] = unicode(line[line.find(':', 1) + 1:], errors='ignore')
-                if cmd[1] == "317":
+                if cmd[1] == "307" or cmd[1] == "330":
                     self.userDetails[cmd[3]]['identified'] = True
                 if cmd[1] == "313":
                     self.userDetails[cmd[3]]['oper'] = True
@@ -308,6 +308,7 @@ class IRCBot:
 
         self.send_lock = threading.Lock()
         self.sock = None
+        self.ipv6 = self.is_ipv6(self.config['server'])
 
     def log(self, message):
         try:
@@ -347,15 +348,27 @@ class IRCBot:
     def list(self):
         self.send("LIST")
 
+    def is_ipv6(self, ip):
+        try:
+            socket.inet_pton(socket.AF_INET6, ip)
+            return True
+        except:
+            return False
+
     def start(self):
         self.server = self.config['server']
         self.port = int(self.config['port'])
         if self.config['proxyhost'] is None:
             if self.config['ssl'] is True:
-                self.sock = wrap_socket(socket.socket(socket.AF_INET,
-                    socket.SOCK_STREAM))
+                if self.ipv6:
+                    self.sock = wrap_socket(socket.socket(socket.AF_INET6, socket.SOCK_STREAM))
+                else:
+                    self.sock = wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
             else:
-                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                if self.ipv6:
+                    self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+                else:
+                    self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
             if self.config['ssl'] is True:
                 temp_socket = socks.socksocket()
@@ -408,6 +421,7 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
     parser = ArgumentParser(add_help=False)
     parser.add_argument('server', metavar='server', type=str, nargs='?', default=None)
+    parser.add_argument('port', metavar='port', type=str, nargs='?', default="6667")
     parser.add_argument('-p', '--password', metavar='password', type=str, nargs='?', default=None)
     parser.add_argument('-c', '--channels', metavar='channels', type=str, nargs='?', default=None)
     parser.add_argument('-o', '--output', metavar='output', type=str, nargs='?', default='.')
@@ -428,7 +442,7 @@ if __name__ == "__main__":
         exit()
 
     server = args.server
-    port = "6667"
+    port = args.port
     password = args.password
 
     proxyhost = args.proxy
@@ -437,10 +451,6 @@ if __name__ == "__main__":
     channels = None
     if args.channels is not None:
         channels = args.channels.split(',')
-
-    if server.find(":") != -1:
-        port = server[server.find(":") + 1:]
-        server = server[:server.find(":")]
 
     if proxyhost is not None:
         if proxyhost.find(":") != -1:
