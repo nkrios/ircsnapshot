@@ -49,10 +49,6 @@ Output from to.gexf.py can be loaded in Gephi.  If the IP information is parsabl
 ![Sample 2 botnet mapped](http://openbwall.com/static/images/fi/allnet.link.png)
 ![Sample 3 botnet graphed](http://openbwall.com/static/images/fi/irc.byroenet.com.UserToChannel.png)
 
-Dependencies
-============
-SocksiPy
-
 Support Scripts
 ===============
 <pre>$ python to.gexf.py
@@ -81,7 +77,7 @@ Notes
 =====
 Please report any issues you encounter.  This tool has proven to be useful in a few cases so I decided it would be good to publish.
 
-Proxy support currently is just for SOCKS4a.  This is compatible with Tor.  I will add more proxy support in the future.  DNS queries will be sent through the proxy.
+Proxy support currently is just for SOCKS5.  This is compatible with Tor.  I will add more proxy support in the future.  DNS queries will be sent through the proxy.
 
 To Do
 =====
