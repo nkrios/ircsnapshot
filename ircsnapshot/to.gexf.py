@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 from json import loads
 import string
 import socket
