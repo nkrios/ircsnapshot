@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 import socket
 from json import dumps
 import string
@@ -359,25 +359,16 @@ class IRCBot:
         self.server = self.config['server']
         self.port = int(self.config['port'])
         if self.config['proxyhost'] is None:
-            if self.config['ssl'] is True:
-                if self.ipv6:
-                    self.sock = wrap_socket(socket.socket(socket.AF_INET6, socket.SOCK_STREAM))
-                else:
-                    self.sock = wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+            if self.ipv6:
+                self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
             else:
-                if self.ipv6:
-                    self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-                else:
-                    self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
-            if self.config['ssl'] is True:
-                temp_socket = socks.socksocket()
-                temp_socket.setproxy(socks.PROXY_TYPE_SOCKS4, self.config['proxyhost'], self.config['proxyport'], True)
-                self.sock = wrap_socket(temp_socket)
-            else:
-                self.sock = socks.socksocket()
-                self.sock.setproxy(socks.PROXY_TYPE_SOCKS4, self.config['proxyhost'], self.config['proxyport'], True)
+            self.sock = socks.socksocket()
+            self.sock.setproxy(socks.PROXY_TYPE_SOCKS4, self.config['proxyhost'], self.config['proxyport'], True)
         self.sock.connect((self.server, self.port))
+        if self.config['ssl'] is True:
+            self.sock = wrap_socket(self.sock)
 
         #send pass
         if self.config["pass"] is not None:
