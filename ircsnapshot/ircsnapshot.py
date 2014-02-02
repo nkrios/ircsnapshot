@@ -5,12 +5,12 @@ import string
 from random import choice
 from ssl import wrap_socket
 from sys import exit, exc_info
-import socks
 import os
 from random import random
 import logging
 import time
 import threading
+import struct
 
 version = "0.9"
 
@@ -41,6 +41,19 @@ def print_help():
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.ascii_lowercase):
     return ''.join(choice(chars) for x in range(size))
+
+
+def is_ipv6(ip):
+    try:
+        return socket.inet_pton(socket.AF_INET6, ip)
+    except:
+        return False
+
+def is_ipv4(ip):
+    try:
+        return socket.inet_pton(socket.AF_INET, ip)
+    except:
+        return False
 
 
 class QueuedTask(object):
@@ -296,6 +309,108 @@ class IrcBotControl:
     # End Parsers
 
 
+class proxy_wrapper:
+    def __init__(self, ipv6):
+        self.type = None
+        self.ip = None
+        self.port = None
+        if ipv6:
+            self.inner = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        else:
+            self.inner = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.user = None
+        self.password = None
+        self.proxy_type = "socks5"
+
+    def set_proxy_address(self, host, port):
+        self.ip = host
+        self.port = port
+
+    def set_proxy_auth(self, user, password):
+        self.user = user
+        self.password = password
+
+    def set_proxy_type(self, type):
+        self.proxy_type = type
+
+    def __getattr__(self, name):
+        ret = getattr(self.inner, name)
+        return ret
+
+    def _generate_connect_packet_socks4a(self, host, port):
+        packet = "\x04\x01"
+        packet += struct.pack("!H", port)
+        packet += "\x00\x00\x00\x11"
+        if self.user is not None:
+            packet += self.user
+        packet += "\x00"
+        packet += host + "\x00"
+        return packet
+
+    @staticmethod
+    def _generate_connect_packet_socks5():
+        # For now, no authentication supported
+        packet = "\x05\x01\x00"
+        return packet
+
+    @staticmethod
+    def _generate_connect_packet_socks5_2_domain(host, port):
+        packet = "\x05\x01\x00\x03"
+        packet += struct.pack('B', host.__len__())
+        packet += host
+        packet += struct.pack("!H", port)
+        return packet
+
+    @staticmethod
+    def _generate_connect_packet_socks5_2_ipv6(ip, port):
+        packet = "\x05\x01\x00\x04"
+        packet += ip
+        packet += struct.pack("!H", port)
+        return packet
+
+    @staticmethod
+    def _generate_connect_packet_socks5_2_ipv4(ip, port):
+        packet = "\x05\x01\x00\x01"
+        packet += ip
+        packet += struct.pack("!H", port)
+        return packet
+
+    def connect(self, endpoint):
+        (host, port) = endpoint
+        if self.proxy_type == "socks4a":
+            packet = self._generate_connect_packet_socks4a(host, port)
+            self.inner.connect((self.ip, self.port))
+            self.inner.send(packet)
+            resp = self.inner.recv(4096)
+            if resp.__len__() == 0 or ord(resp[1]) != 0x5a:
+                self.inner.close()
+                raise Exception("Proxy refused to connect to target (code: " + str(ord(resp[1])) + ")")
+        elif self.proxy_type == "socks5":
+            packet = self._generate_connect_packet_socks5()
+            self.inner.connect((self.ip, self.port))
+            self.inner.send(packet)
+            resp = self.inner.recv(4096)
+            if ord(resp[1]) == 0x00:
+                if is_ipv6(host) is not False:
+                    ip = is_ipv6(host)
+                    packet = self._generate_connect_packet_socks5_2_ipv6(ip, port)
+                elif is_ipv4(host) is not False:
+                    ip = is_ipv4(host)
+                    packet = self._generate_connect_packet_socks5_2_ipv4(ip, port)
+                else:
+                    packet = self._generate_connect_packet_socks5_2_domain(host, port)
+                self.inner.send(packet)
+                resp = self.inner.recv(4096)
+                if resp.__len__() == 0 or ord(resp[1]) != 0x00:
+                    self.inner.close()
+                    raise Exception("Proxy refused to connect to target (code: " + str(ord(resp[1])) + ")")
+            else:
+                self.inner.close()
+                raise Exception("Invalid authentication type")
+
+        else:
+            raise Exception("Invalid proxy type")
+
 class IRCBot:
     def __init__(self, config, parser):
         self.config = config
@@ -308,7 +423,7 @@ class IRCBot:
 
         self.send_lock = threading.Lock()
         self.sock = None
-        self.ipv6 = self.is_ipv6(self.config['server'])
+        self.ipv6 = is_ipv6(self.config['server'])
 
     def log(self, message):
         try:
@@ -348,13 +463,6 @@ class IRCBot:
     def list(self):
         self.send("LIST")
 
-    def is_ipv6(self, ip):
-        try:
-            socket.inet_pton(socket.AF_INET6, ip)
-            return True
-        except:
-            return False
-
     def start(self):
         self.server = self.config['server']
         self.port = int(self.config['port'])
@@ -364,8 +472,8 @@ class IRCBot:
             else:
                 self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
-            self.sock = socks.socksocket()
-            self.sock.setproxy(socks.PROXY_TYPE_SOCKS4, self.config['proxyhost'], self.config['proxyport'], True)
+            self.sock = proxy_wrapper(is_ipv6(self.config['proxyhost']))
+            self.sock.set_proxy_address(self.config['proxyhost'], self.config['proxyport'])
         self.sock.connect((self.server, self.port))
         if self.config['ssl'] is True:
             self.sock = wrap_socket(self.sock)
@@ -482,12 +590,18 @@ if __name__ == "__main__":
     }
 
     bot = IrcBotControl(config)
-    try:
+
+    test = False
+
+    if not test:
+        try:
+            bot.start()
+        except:
+            print("An error occurred while connected to the IRC server")
+            print("Still going to write out the results")
+            print((exc_info()))
+    else:
         bot.start()
-    except:
-        print("An error occurred while connected to the IRC server")
-        print("Still going to write out the results")
-        print((exc_info()))
 
     results = {'channels': bot.channels, 'userList': bot.userList,
                'users': bot.users, 'links': bot.links, 'linkList': bot.linkList,
