@@ -12,6 +12,7 @@ import time
 import threading
 import struct
 import os
+import ctypes
 
 version = "0.9"
 
@@ -53,7 +54,7 @@ def is_ipv6(ip):
                             ("ipv4_addr", ctypes.c_byte * 4),
                             ("ipv6_addr", ctypes.c_byte * 16),
                             ("__pad2", ctypes.c_ulong)]
-            import ctypes
+
             WSAStringToAddressA = ctypes.windll.ws2_32.WSAStringToAddressA
             WSAAddressToStringA = ctypes.windll.ws2_32.WSAAddressToStringA
             addr = sockaddr()
