@@ -11,6 +11,7 @@ import logging
 import time
 import threading
 import struct
+import os
 
 version = "0.9"
 
@@ -45,14 +46,31 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.ascii_lowercase):
 
 def is_ipv6(ip):
     try:
-        return socket.inet_pton(socket.AF_INET6, ip)
+        if os.name == "nt":
+            class sockaddr(ctypes.Structure):
+                _fields_ = [("sa_family", ctypes.c_short),
+                            ("__pad1", ctypes.c_ushort),
+                            ("ipv4_addr", ctypes.c_byte * 4),
+                            ("ipv6_addr", ctypes.c_byte * 16),
+                            ("__pad2", ctypes.c_ulong)]
+            import ctypes
+            WSAStringToAddressA = ctypes.windll.ws2_32.WSAStringToAddressA
+            WSAAddressToStringA = ctypes.windll.ws2_32.WSAAddressToStringA
+            addr = sockaddr()
+            addr.sa_family = socket.AF_INET6
+            addr_size = ctypes.c_int(ctypes.sizeof(addr))
+            if WSAStringToAddressA(ip, socket.AF_INET6, None, ctypes.byref(addr), ctypes.byref(addr_size)) != 0:
+                raise socket.error(ctypes.FormatError())
+            return ctypes.string_at(addr.ipv6_addr, 16)
+        else:
+            return socket.inet_pton(socket.AF_INET6, ip)
     except:
         return False
 
 
 def is_ipv4(ip):
     try:
-        return socket.inet_pton(socket.AF_INET, ip)
+        return socket.inet_aton(ip)
     except:
         return False
 
