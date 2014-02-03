@@ -49,6 +49,7 @@ def is_ipv6(ip):
     except:
         return False
 
+
 def is_ipv4(ip):
     try:
         return socket.inet_pton(socket.AF_INET, ip)
@@ -67,6 +68,7 @@ class QueuedTask(object):
 
     def __eq__(self, other):
         return self.verb == other.verb and self.data == other.data
+
 
 class IrcBotControl:
     def __init__(self, config):
@@ -309,7 +311,7 @@ class IrcBotControl:
     # End Parsers
 
 
-class proxy_wrapper:
+class ProxyWrapper:
     def __init__(self, ipv6):
         self.type = None
         self.ip = None
@@ -411,6 +413,7 @@ class proxy_wrapper:
         else:
             raise Exception("Invalid proxy type")
 
+
 class IRCBot:
     def __init__(self, config, parser):
         self.config = config
@@ -472,7 +475,7 @@ class IRCBot:
             else:
                 self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
-            self.sock = proxy_wrapper(is_ipv6(self.config['proxyhost']))
+            self.sock = ProxyWrapper(is_ipv6(self.config['proxyhost']))
             self.sock.set_proxy_address(self.config['proxyhost'], self.config['proxyport'])
         self.sock.connect((self.server, self.port))
         if self.config['ssl'] is True:
@@ -563,7 +566,7 @@ if __name__ == "__main__":
     logFormatter.converter = time.gmtime
     rootLogger = logging.getLogger()
 
-    fileHandler = logging.FileHandler("{0}/{1}.log".format(args.output, server))
+    fileHandler = logging.FileHandler("{0}/{1}.log".format(args.output, server.replace(":", ".")))
     fileHandler.setFormatter(logFormatter)
     rootLogger.addHandler(fileHandler)
 
