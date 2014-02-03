@@ -610,5 +610,5 @@ if __name__ == "__main__":
                'users': bot.users, 'links': bot.links, 'linkList': bot.linkList,
                'userDetails': bot.userDetails}
 
-    with open(args.output + "/" + config['server'] + ".json", "a") as myfile:
+    with open(args.output + "/" + config['server'].replace(":", ".") + ".json", "a") as myfile:
         myfile.write(dumps(results, sort_keys=True, indent=4, separators=(',', ': ')))
