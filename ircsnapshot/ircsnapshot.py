@@ -5,7 +5,6 @@ import string
 from random import choice
 from ssl import wrap_socket
 from sys import exit, exc_info
-import os
 from random import random
 import logging
 import time
@@ -13,6 +12,7 @@ import threading
 import struct
 import os
 import ctypes
+import datetime
 
 version = "0.9"
 
@@ -56,7 +56,6 @@ def is_ipv6(ip):
                             ("__pad2", ctypes.c_ulong)]
 
             WSAStringToAddressA = ctypes.windll.ws2_32.WSAStringToAddressA
-            WSAAddressToStringA = ctypes.windll.ws2_32.WSAAddressToStringA
             addr = sockaddr()
             addr.sa_family = socket.AF_INET6
             addr_size = ctypes.c_int(ctypes.sizeof(addr))
@@ -126,6 +125,8 @@ class IrcBotControl:
         self.bot.log(dumps({'config': self.config, 'nick': self.nick,
             'user': self.user, 'real': self.real}))
 
+        self.last_return = datetime.datetime.now()
+
         self.timer = threading.Timer(self.get_throttle_time(), self.process_queue_item)
         self.timer.start()
 
@@ -157,6 +158,7 @@ class IrcBotControl:
         if len(self.to_process_queue) > 0:
             item = choice(self.to_process_queue)
             self.to_process_queue.remove(item)
+            self.last_return = datetime.datetime.now()
             if item.verb == "join":
                 self.is_processing.append(item)
                 if item.other is not None:
@@ -177,6 +179,12 @@ class IrcBotControl:
             self.bot.quit()
             self.queue_lock.release()
             return
+        else:
+            diff = datetime.datetime.now() - self.last_return
+            if diff.total_seconds() > 600:
+                self.bot.quit()
+                self.queue_lock.release()
+                return
         self.timer = threading.Timer(self.get_throttle_time(), self.process_queue_item)
         self.timer.start()
         self.queue_lock.release()
@@ -445,7 +453,8 @@ class IRCBot:
 
         self.send_lock = threading.Lock()
         self.sock = None
-        self.ipv6 = is_ipv6(self.config['server'])
+        self.ipv6 = is_ipv6(self.config['server']) is not False
+        self.first_packet = True
 
     def log(self, message):
         try:
@@ -477,7 +486,7 @@ class IRCBot:
         self.send("PART " + channel)
 
     def whois(self, nick):
-        self.send("WHOIS " + nick)
+        self.send("WHOIS " + nick + " " + nick)
 
     def quit(self):
         self.send("QUIT :")
@@ -497,6 +506,7 @@ class IRCBot:
             self.sock = ProxyWrapper(is_ipv6(self.config['proxyhost']))
             self.sock.set_proxy_address(self.config['proxyhost'], self.config['proxyport'])
         self.sock.connect((self.server, self.port))
+
         if self.config['ssl'] is True:
             self.sock = wrap_socket(self.sock)
 
@@ -517,6 +527,10 @@ class IRCBot:
             if not data:
                 self.log("Disconnected")
                 break
+            if self.first_packet:
+                self.first_packet = False
+                if data[0] != ":":
+                    raise Exception("Does not appear to be an IRC server")
             for line in [data]:
                 line = line[:-2]
                 self.log(line)
@@ -555,7 +569,9 @@ if __name__ == "__main__":
 
     parser.add_argument('--proxy', metavar='proxy', type=str, nargs='?', default=None)
     parser.add_argument('-x', '--ssl', default=False, required=False, action='store_true')
+
     parser.add_argument('-h', '--help', default=False, required=False, action='store_true')
+
     args = parser.parse_args()
 
     if args.help or args.server is None:
