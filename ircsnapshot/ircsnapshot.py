@@ -11,6 +11,7 @@ from random import random
 import logging
 import time
 import threading
+import traceback
 
 version = "0.9"
 
@@ -487,9 +488,11 @@ if __name__ == "__main__":
     try:
         bot.start()
     except:
-        print("An error occurred while connected to the IRC server")
-        print("Still going to write out the results")
-        print((exc_info()))
+        logging.info("An error occurred while connected to the IRC server")
+        logging.info("Still going to write out the results")
+        logging.info((exc_info()[0]))
+        logging.info((exc_info()[1]))
+        logging.info(traceback.format_tb(exc_info()[2]))
 
     results = {'channels': bot.channels, 'userList': bot.userList,
         'users': bot.users, 'links': bot.links, 'linkList': bot.linkList,
