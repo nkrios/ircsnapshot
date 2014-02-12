@@ -1,24 +1,26 @@
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python
 import socket
 from json import dumps
 import string
 from random import choice
 from ssl import wrap_socket
 from sys import exit, exc_info
-import socks
-import os
 from random import random
 import logging
 import time
 import threading
 import traceback
+import struct
+import os
+import ctypes
+import datetime
 
 version = "0.9"
 
 
-def PrintHelp():
+def print_help():
     global version
-    print("usage: ircsnapshot.py [-h] [options] server[:port]")
+    print("usage: ircsnapshot.py [-h] [options] server [port]")
     print("")
     print(("IRCSnapshot v" + version))
     print("Gathering information from IRC servers")
@@ -40,9 +42,39 @@ def PrintHelp():
     print("")
 
 
-def id_generator(size=6,
-    chars=string.ascii_uppercase + string.ascii_lowercase):
+def id_generator(size=6, chars=string.ascii_uppercase + string.ascii_lowercase):
     return ''.join(choice(chars) for x in range(size))
+
+
+def is_ipv6(ip):
+    try:
+        if os.name == "nt":
+            class sockaddr(ctypes.Structure):
+                _fields_ = [("sa_family", ctypes.c_short),
+                            ("__pad1", ctypes.c_ushort),
+                            ("ipv4_addr", ctypes.c_byte * 4),
+                            ("ipv6_addr", ctypes.c_byte * 16),
+                            ("__pad2", ctypes.c_ulong)]
+
+            WSAStringToAddressA = ctypes.windll.ws2_32.WSAStringToAddressA
+            addr = sockaddr()
+            addr.sa_family = socket.AF_INET6
+            addr_size = ctypes.c_int(ctypes.sizeof(addr))
+            if WSAStringToAddressA(ip, socket.AF_INET6, None, ctypes.byref(addr), ctypes.byref(addr_size)) != 0:
+                raise socket.error(ctypes.FormatError())
+            return ctypes.string_at(addr.ipv6_addr, 16)
+        else:
+            return socket.inet_pton(socket.AF_INET6, ip)
+    except:
+        return False
+
+
+def is_ipv4(ip):
+    try:
+        return socket.inet_aton(ip)
+    except:
+        return False
+
 
 class QueuedTask(object):
     def __init__(self, verb, data, other=None):
@@ -55,6 +87,7 @@ class QueuedTask(object):
 
     def __eq__(self, other):
         return self.verb == other.verb and self.data == other.data
+
 
 class IrcBotControl:
     def __init__(self, config):
@@ -83,8 +116,7 @@ class IrcBotControl:
         self.whoisDataCodes = ["307", "308", "309", "310", "311", "312", "313",
             "316", "317", "319", "320", "330", "335", "338", "378", "379",
             "615", "616", "617", "671", "689", "690", ]
-        self.channelJoinCodes = {"366", "470", "471", "473", "474", "475",
-            "476", "477", "479", "519", "520"}
+        self.channelJoinCodes = {"366", "470", "471", "473", "474", "475", "476", "477", "479", "519", "520"}
 
         self.bot = IRCBot(self.config, self)
 
@@ -93,6 +125,8 @@ class IrcBotControl:
 
         self.bot.log(dumps({'config': self.config, 'nick': self.nick,
             'user': self.user, 'real': self.real}))
+
+        self.last_return = datetime.datetime.now()
 
         self.timer = threading.Timer(self.get_throttle_time(), self.process_queue_item)
         self.timer.start()
@@ -125,6 +159,7 @@ class IrcBotControl:
         if len(self.to_process_queue) > 0:
             item = choice(self.to_process_queue)
             self.to_process_queue.remove(item)
+            self.last_return = datetime.datetime.now()
             if item.verb == "join":
                 self.is_processing.append(item)
                 if item.other is not None:
@@ -145,6 +180,12 @@ class IrcBotControl:
             self.bot.quit()
             self.queue_lock.release()
             return
+        else:
+            diff = datetime.datetime.now() - self.last_return
+            if diff.total_seconds() > 600:
+                self.bot.quit()
+                self.queue_lock.release()
+                return
         self.timer = threading.Timer(self.get_throttle_time(), self.process_queue_item)
         self.timer.start()
         self.queue_lock.release()
@@ -274,7 +315,7 @@ class IrcBotControl:
                     self.userDetails[cmd[3]]['user'] = unicode(cmd[4], errors='ignore')
                     self.userDetails[cmd[3]]['host'] = unicode(cmd[5], errors='ignore')
                     self.userDetails[cmd[3]]['real'] = unicode(line[line.find(':', 1) + 1:], errors='ignore')
-                if cmd[1] == "317":
+                if cmd[1] == "307" or cmd[1] == "330":
                     self.userDetails[cmd[3]]['identified'] = True
                 if cmd[1] == "313":
                     self.userDetails[cmd[3]]['oper'] = True
@@ -298,6 +339,109 @@ class IrcBotControl:
     # End Parsers
 
 
+class ProxyWrapper:
+    def __init__(self, ipv6):
+        self.type = None
+        self.ip = None
+        self.port = None
+        if ipv6:
+            self.inner = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        else:
+            self.inner = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.user = None
+        self.password = None
+        self.proxy_type = "socks5"
+
+    def set_proxy_address(self, host, port):
+        self.ip = host
+        self.port = port
+
+    def set_proxy_auth(self, user, password):
+        self.user = user
+        self.password = password
+
+    def set_proxy_type(self, type):
+        self.proxy_type = type
+
+    def __getattr__(self, name):
+        ret = getattr(self.inner, name)
+        return ret
+
+    def _generate_connect_packet_socks4a(self, host, port):
+        packet = "\x04\x01"
+        packet += struct.pack("!H", port)
+        packet += "\x00\x00\x00\x11"
+        if self.user is not None:
+            packet += self.user
+        packet += "\x00"
+        packet += host + "\x00"
+        return packet
+
+    @staticmethod
+    def _generate_connect_packet_socks5():
+        # For now, no authentication supported
+        packet = "\x05\x01\x00"
+        return packet
+
+    @staticmethod
+    def _generate_connect_packet_socks5_2_domain(host, port):
+        packet = "\x05\x01\x00\x03"
+        packet += struct.pack('B', host.__len__())
+        packet += host
+        packet += struct.pack("!H", port)
+        return packet
+
+    @staticmethod
+    def _generate_connect_packet_socks5_2_ipv6(ip, port):
+        packet = "\x05\x01\x00\x04"
+        packet += ip
+        packet += struct.pack("!H", port)
+        return packet
+
+    @staticmethod
+    def _generate_connect_packet_socks5_2_ipv4(ip, port):
+        packet = "\x05\x01\x00\x01"
+        packet += ip
+        packet += struct.pack("!H", port)
+        return packet
+
+    def connect(self, endpoint):
+        (host, port) = endpoint
+        if self.proxy_type == "socks4a":
+            packet = self._generate_connect_packet_socks4a(host, port)
+            self.inner.connect((self.ip, self.port))
+            self.inner.send(packet)
+            resp = self.inner.recv(4096)
+            if resp.__len__() == 0 or ord(resp[1]) != 0x5a:
+                self.inner.close()
+                raise Exception("Proxy refused to connect to target (code: " + str(ord(resp[1])) + ")")
+        elif self.proxy_type == "socks5":
+            packet = self._generate_connect_packet_socks5()
+            self.inner.connect((self.ip, self.port))
+            self.inner.send(packet)
+            resp = self.inner.recv(4096)
+            if ord(resp[1]) == 0x00:
+                if is_ipv6(host) is not False:
+                    ip = is_ipv6(host)
+                    packet = self._generate_connect_packet_socks5_2_ipv6(ip, port)
+                elif is_ipv4(host) is not False:
+                    ip = is_ipv4(host)
+                    packet = self._generate_connect_packet_socks5_2_ipv4(ip, port)
+                else:
+                    packet = self._generate_connect_packet_socks5_2_domain(host, port)
+                self.inner.send(packet)
+                resp = self.inner.recv(4096)
+                if resp.__len__() == 0 or ord(resp[1]) != 0x00:
+                    self.inner.close()
+                    raise Exception("Proxy refused to connect to target (code: " + str(ord(resp[1])) + ")")
+            else:
+                self.inner.close()
+                raise Exception("Invalid authentication type")
+
+        else:
+            raise Exception("Invalid proxy type")
+
+
 class IRCBot:
     def __init__(self, config, parser):
         self.config = config
@@ -309,6 +453,9 @@ class IRCBot:
         self.parser = parser
 
         self.send_lock = threading.Lock()
+        self.sock = None
+        self.ipv6 = is_ipv6(self.config['server']) is not False
+        self.first_packet = True
 
     def log(self, message):
         try:
@@ -340,7 +487,7 @@ class IRCBot:
         self.send("PART " + channel)
 
     def whois(self, nick):
-        self.send("WHOIS " + nick)
+        self.send("WHOIS " + nick + " " + nick)
 
     def quit(self):
         self.send("QUIT :")
@@ -352,29 +499,23 @@ class IRCBot:
         self.server = self.config['server']
         self.port = int(self.config['port'])
         if self.config['proxyhost'] is None:
-            if self.config['ssl'] is True:
-                self.sock = wrap_socket(socket.socket(socket.AF_INET,
-                    socket.SOCK_STREAM))
+            if self.ipv6:
+                self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
             else:
                 self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
-            if self.config['ssl'] is True:
-                temp_socket = socks.socksocket()
-                temp_socket.setproxy(socks.PROXY_TYPE_SOCKS4,
-                    self.config['proxyhost'], self.config['proxyport'], True)
-                self.sock = wrap_socket(temp_socket)
-            else:
-                self.sock = socks.socksocket()
-                self.sock.setproxy(socks.PROXY_TYPE_SOCKS4,
-                    self.config['proxyhost'], self.config['proxyport'], True)
+            self.sock = ProxyWrapper(is_ipv6(self.config['proxyhost']))
+            self.sock.set_proxy_address(self.config['proxyhost'], self.config['proxyport'])
         self.sock.connect((self.server, self.port))
+
+        if self.config['ssl'] is True:
+            self.sock = wrap_socket(self.sock)
 
         #send pass
         if self.config["pass"] is not None:
             self.send("PASS " + self.config["pass"], True)
 
-        self.send("USER " + self.user + " 127.0.0.1 " + self.server + " :" +
-            self.real, True)
+        self.send("USER " + self.user + " 127.0.0.1 " + self.server + " :" + self.real, True)
         self.set_nick(self.nick)
         self.main()
 
@@ -387,6 +528,10 @@ class IRCBot:
             if not data:
                 self.log("Disconnected")
                 break
+            if self.first_packet:
+                self.first_packet = False
+                if data[0] != ":":
+                    raise Exception("Does not appear to be an IRC server")
             for line in [data]:
                 line = line[:-2]
                 self.log(line)
@@ -412,6 +557,7 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
     parser = ArgumentParser(add_help=False)
     parser.add_argument('server', metavar='server', type=str, nargs='?', default=None)
+    parser.add_argument('port', metavar='port', type=str, nargs='?', default="6667")
     parser.add_argument('-p', '--password', metavar='password', type=str, nargs='?', default=None)
     parser.add_argument('-c', '--channels', metavar='channels', type=str, nargs='?', default=None)
     parser.add_argument('-o', '--output', metavar='output', type=str, nargs='?', default='.')
@@ -424,15 +570,17 @@ if __name__ == "__main__":
 
     parser.add_argument('--proxy', metavar='proxy', type=str, nargs='?', default=None)
     parser.add_argument('-x', '--ssl', default=False, required=False, action='store_true')
+
     parser.add_argument('-h', '--help', default=False, required=False, action='store_true')
+
     args = parser.parse_args()
 
     if args.help or args.server is None:
-        PrintHelp()
+        print_help()
         exit()
 
     server = args.server
-    port = "6667"
+    port = args.port
     password = args.password
 
     proxyhost = args.proxy
@@ -441,10 +589,6 @@ if __name__ == "__main__":
     channels = None
     if args.channels is not None:
         channels = args.channels.split(',')
-
-    if server.find(":") != -1:
-        port = server[server.find(":") + 1:]
-        server = server[:server.find(":")]
 
     if proxyhost is not None:
         if proxyhost.find(":") != -1:
@@ -458,7 +602,7 @@ if __name__ == "__main__":
     logFormatter.converter = time.gmtime
     rootLogger = logging.getLogger()
 
-    fileHandler = logging.FileHandler("{0}/{1}.log".format(args.output, server))
+    fileHandler = logging.FileHandler("{0}/{1}.log".format(args.output, server.replace(":", ".")))
     fileHandler.setFormatter(logFormatter)
     rootLogger.addHandler(fileHandler)
 
@@ -485,19 +629,24 @@ if __name__ == "__main__":
     }
 
     bot = IrcBotControl(config)
-    try:
+
+    test = False
+
+    if not test:
+        try:
+            bot.start()
+        except:
+            logging.info("An error occurred while connected to the IRC server")
+            logging.info("Still going to write out the results")
+            logging.info((exc_info()[0]))
+            logging.info((exc_info()[1]))
+            logging.info(traceback.format_tb(exc_info()[2]))
+    else:
         bot.start()
-    except:
-        logging.info("An error occurred while connected to the IRC server")
-        logging.info("Still going to write out the results")
-        logging.info((exc_info()[0]))
-        logging.info((exc_info()[1]))
-        logging.info(traceback.format_tb(exc_info()[2]))
 
     results = {'channels': bot.channels, 'userList': bot.userList,
-        'users': bot.users, 'links': bot.links, 'linkList': bot.linkList,
-        'userDetails': bot.userDetails}
+               'users': bot.users, 'links': bot.links, 'linkList': bot.linkList,
+               'userDetails': bot.userDetails}
 
-    with open(args.output + "/" + config['server'] + ".json", "a") as myfile:
-        myfile.write(dumps(results, sort_keys=True, indent=4,
-            separators=(',', ': ')))
+    with open(args.output + "/" + config['server'].replace(":", ".") + ".json", "a") as myfile:
+        myfile.write(dumps(results, sort_keys=True, indent=4, separators=(',', ': ')))

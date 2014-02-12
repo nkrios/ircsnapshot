@@ -4,7 +4,7 @@ ircsnapshot
 Tool to gather information from IRC servers
 
 <pre>$ python ircsnapshot.py
-usage: ircsnapshot.py [-h] [options] server[:port]
+usage: ircsnapshot.py [-h] [options] server [port]
 
 IRCSnapshot v0.9
 Gathering information from IRC servers
@@ -41,9 +41,13 @@ server.json - JSON encoded list of links visible to connecting user
 }
 </pre>
 
-Dependencies
-============
-SockiPy
+Output to.gexf.py
+=================
+Output from to.gexf.py can be loaded in Gephi.  If the IP information is parsable, the output will include coordinates for Geolocation plugins for Gephi to plot to create an image like the following.
+
+![Sample 1 botnet mapped](https://raw2.github.com/bwall/ircsnapshot/master/ircsnapshot/example.png)
+![Sample 2 botnet mapped](http://openbwall.com/static/images/fi/allnet.link.png)
+![Sample 3 botnet graphed](http://openbwall.com/static/images/fi/irc.byroenet.com.UserToChannel.png)
 
 Support Scripts
 ===============
@@ -73,12 +77,14 @@ Notes
 =====
 Please report any issues you encounter.  This tool has proven to be useful in a few cases so I decided it would be good to publish.
 
-Proxy support currently is just for SOCKS4a.  This is compatible with Tor.  I will add more proxy support in the future.  DNS queries will be sent through the proxy.
+Proxy support currently is just for SOCKS5.  This is compatible with Tor.  I will add more proxy support in the future.  DNS queries will be sent through the proxy.
 
 To Do
 =====
- * Split to two threads (command thread and protocol thread)
- * Stricter parsing of whois data
+ * Session management (restoring after being banned, crashes, etc)
+ * Set limit of channels to resolve per connection
+ * Multiple connections with jobs across sesssions
+ * Add optional CTCP queries
  * More scripts to parse data post scan
  * to.gexf.py to include a UserToGPS to create bot heat maps
  * More fail over states in to.gexf.py
