@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Ircsnapshot by bwall</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Ircsnapshot</h1>
+        <p>Tool to gather information from IRC servers</p>
+
+        <p class="view"><a href="https://github.com/bwall/ircsnapshot">View the Project on GitHub <small>bwall/ircsnapshot</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/bwall/ircsnapshot/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/bwall/ircsnapshot/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/bwall/ircsnapshot">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a name="ircsnapshot" class="anchor" href="#ircsnapshot"><span class="octicon octicon-link"></span></a>ircsnapshot</h1>
+
+<p>Tool to gather information from IRC servers</p>
+
+<pre>$ python ircsnapshot.py
+usage: ircsnapshot.py [-h] [options] server [port]
+
+IRCSnapshot v0.9
+Gathering information from IRC servers
+By Brian Wallace (@botnet_hunter)
+
+Options:
+  -n --nick NICK                Set nick of bot
+  -u --user USER                Set user of bot
+  -r --real REAL                Set real name of bot
+  -x --ssl                      SSL connection
+  -p --password PASS            Server password
+  -c --channels #chan1,#chan2   Additional channels to check
+  --proxy SERVER[:PORT]         SOCKS4 proxy to connect through
+  -o --output Directory         Output directory (default .)
+  -t --throttle 1.0             Seconds to sleep before sending commands (default 1)
+
+  -h --help                     Print this message
+
+</pre>
+
+<h1>
+<a name="output" class="anchor" href="#output"><span class="octicon octicon-link"></span></a>Output</h1>
+
+<p>The UI writes the contents of the log, but the primary output is to a json file in the executing directory.</p>
+
+<pre>
+server.log.txt - Log file
+server.json - JSON encoded list of links visible to connecting user
+{
+    'links': [], // List of link metadata
+    'linkList': {}, // Dictionary of links and users connected to them
+    'channels': {}, // Dictionary of channels and their metadata
+    'userList': {}, // Dictionary of channels and users in them
+    'users': {}, // Dictionary of users and their whois data
+    'userDetails': {} // Dictionary of parsed details from user's whois
+}
+</pre>
+
+<h1>
+<a name="output-togexfpy" class="anchor" href="#output-togexfpy"><span class="octicon octicon-link"></span></a>Output to.gexf.py</h1>
+
+<p>Output from to.gexf.py can be loaded in Gephi.  If the IP information is parsable, the output will include coordinates for Geolocation plugins for Gephi to plot to create an image like the following.</p>
+
+<p><img src="https://raw2.github.com/bwall/ircsnapshot/master/ircsnapshot/example.png" alt="Sample 1 botnet mapped"><img src="http://openbwall.com/static/images/fi/allnet.link.png" alt="Sample 2 botnet mapped"><img src="http://openbwall.com/static/images/fi/irc.byroenet.com.UserToChannel.png" alt="Sample 3 botnet graphed"></p>
+
+<h1>
+<a name="support-scripts" class="anchor" href="#support-scripts"><span class="octicon octicon-link"></span></a>Support Scripts</h1>
+
+<pre>$ python to.gexf.py
+usage: to.gexf.py [-h] [options] conversion input
+
+to.gexf v0.1
+Convert IRCSnapShot output to Gephi compatible format
+Gexf output is to STDOUT
+By Brian Wallace (@botnet_hunter)
+
+Conversion Types:
+  UserToLink                    Show relation between users and links
+  UserToChannel                 Show relation between users and channels
+
+GPS:
+  -m MaxMind Location           Location of Maxmind database files (default .)
+
+  -h --help                     Print this message
+
+You can get Maxmind databases from Maxmind.com.
+Free database: http://geolite.maxmind.com/download/geoip/database/GeoLiteCity_CSV/GeoLiteCity-latest.zip
+
+</pre>
+
+<h1>
+<a name="notes" class="anchor" href="#notes"><span class="octicon octicon-link"></span></a>Notes</h1>
+
+<p>Please report any issues you encounter.  This tool has proven to be useful in a few cases so I decided it would be good to publish.</p>
+
+<p>Proxy support currently is just for SOCKS5.  This is compatible with Tor.  I will add more proxy support in the future.  DNS queries will be sent through the proxy.</p>
+
+<h1>
+<a name="to-do" class="anchor" href="#to-do"><span class="octicon octicon-link"></span></a>To Do</h1>
+
+<ul>
+<li>Session management (restoring after being banned, crashes, etc)</li>
+<li>Set limit of channels to resolve per connection</li>
+<li>Multiple connections with jobs across sesssions</li>
+<li>Add optional CTCP queries</li>
+<li>More scripts to parse data post scan</li>
+<li>to.gexf.py to include a UserToGPS to create bot heat maps</li>
+<li>More fail over states in to.gexf.py</li>
+<li>Support multiple network inputs to to.gexf.py</li>
+<li>Merge Maxmind databases as included file (add licensing)</li>
+</ul>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/bwall">bwall</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
