@@ -36,6 +36,7 @@ def print_help():
     print("  --proxy SERVER[:PORT]         SOCKS4 proxy to connect through")
     print("  -o --output Directory         Output directory (default .)")
     print("  -t --throttle 1.0             Seconds to sleep before sending messages (default 1)")
+    print("  -L --no-list                  Do not request server wide lists (channels, links, names)")
     print("                                Random values between 0 and this value are chosen each time")
     print("")
     print("  -h --help                     Print this message")
@@ -239,9 +240,14 @@ class IrcBotControl:
     def start_scanning(self):
         if self.hasListed is False:
             self.hasListed = True
-            self.bot.list()
-            self.bot.send("LINKS")
-            self.bot.send("NAMES")
+            self.parse_list_end("", ["", "323"])
+            if not self.config['nolist']:
+                self.bot.list()
+                self.bot.send("LINKS")
+                self.bot.send("NAMES")
+            else:
+                # decided to get a channel list, so we force a list end call
+                self.parse_list_end(None, [None, "323"])
 
     def parse_list_entry(self, line, cmd):
         if cmd[1] == "322":
@@ -530,8 +536,8 @@ class IRCBot:
                 break
             if self.first_packet:
                 self.first_packet = False
-                if data[0] != ":":
-                    raise Exception("Does not appear to be an IRC server")
+                if data[0] != ":" and data[0] != "N" and data[0] != "P":
+                    raise Exception("Does not appear to be an IRC server: {0}".format(data))
             for line in [data]:
                 line = line[:-2]
                 self.log(line)
@@ -570,10 +576,12 @@ if __name__ == "__main__":
 
     parser.add_argument('--proxy', metavar='proxy', type=str, nargs='?', default=None)
     parser.add_argument('-x', '--ssl', default=False, required=False, action='store_true')
+    parser.add_argument('-L', '--no-list', required=False, action='store_true', default=False)
 
     parser.add_argument('-h', '--help', default=False, required=False, action='store_true')
 
     args = parser.parse_args()
+    print args
 
     if args.help or args.server is None:
         print_help()
@@ -625,7 +633,8 @@ if __name__ == "__main__":
         'real': args.real,
         'outputdir': args.output,
         'throttleLevel': args.throttle,
-        'listDelay': args.listdelay
+        'listDelay': args.listdelay,
+        'nolist': args.no_list,
     }
 
     bot = IrcBotControl(config)
